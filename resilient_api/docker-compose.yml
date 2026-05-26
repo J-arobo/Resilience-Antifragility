@@ -1,0 +1,22 @@
+#version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dockerfile.app
+    container_name: resilient-api
+    ports:
+      - "5002:5002"
+    restart: always
+
+  locust:
+    build:
+      context: .
+      dockerfile: dockerfile.locust.l
+    container_name: locust-tester
+    ports:
+      - "8090:8089" #remaping 8090 t0 8089
+    depends_on:
+      - app
+
