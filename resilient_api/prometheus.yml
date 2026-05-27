@@ -1,0 +1,48 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+
+scrape_configs:
+
+  # Resilient API — RL + Bandit + fallback chain
+  - job_name: 'resilient-api'
+    static_configs:
+      - targets: ['resilient-api:5002']
+    metrics_path: /metrics
+    scheme: http
+
+  # Fragile API — no resilience
+  - job_name: 'fragile-api'
+    static_configs:
+      - targets: ['fragile-api:5003']
+    metrics_path: /metrics
+    scheme: http
+
+  # Baseline API — retries + circuit breaker, no AI
+  - job_name: 'baseline-api'
+    static_configs:
+      - targets: ['baseline-api:5004']
+    metrics_path: /metrics
+    scheme: http
+
+  # Adaptive API — function-specific chaos profiles (NEW)
+  - job_name: 'adaptive-api'
+    static_configs:
+      - targets: ['adaptive-api:5005']
+    metrics_path: /metrics
+    scheme: http
+
+  # Loki
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
+  # Promtail
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['promtail:9080']
+
+  # Grafana
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']

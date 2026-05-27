@@ -1,0 +1,10 @@
+flask==2.3.2
+tenacity==8.2.2
+python-json-logger
+prometheus_client
+scikit-learn
+pandas
+requests
+psutil
+matplotlib
+pandas>=1.5.0

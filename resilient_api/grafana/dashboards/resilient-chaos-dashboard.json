@@ -1,0 +1,940 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Total requests processed by the resilient API",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 20,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "sum(api_requests_total{stage=\"resilient\"})", "legendFormat": "Requests", "range": false, "instant": true, "refId": "A" } ],
+      "title": "Total requests (resilient)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Percentage of resilient requests that succeeded",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "yellow", "value": 80 }, { "color": "green", "value": 95 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 21,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "100 * (sum(api_requests_total{stage=\"resilient\"}) - sum(api_errors_total{stage=\"resilient\"})) / sum(api_requests_total{stage=\"resilient\"})", "legendFormat": "Success %", "range": false, "instant": true, "refId": "A" } ],
+      "title": "Success rate (resilient)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Circuit breaker state: 1 = open (bad), 0 = closed (healthy)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [ { "options": { "0": { "text": "Closed", "color": "green" }, "1": { "text": "Open", "color": "red" } }, "type": "value" } ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 22,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "api_circuit_breaker_open_total", "legendFormat": "Circuit breaker", "range": false, "instant": true, "refId": "A" } ],
+      "title": "Circuit breaker state",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Mean time to recovery for incidents",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 1.8 } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 23,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "incident_mttr_seconds", "legendFormat": "MTTR", "range": false, "instant": true, "refId": "A" } ],
+      "title": "Incident MTTR",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "CPU utilization percentage",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 24,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "node_cpu_utilization", "legendFormat": "CPU %", "range": true, "refId": "A" } ],
+      "title": "CPU utilization",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Memory utilization percentage",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 25,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "node_memory_utilization", "legendFormat": "Memory %", "range": true, "refId": "A" } ],
+      "title": "Memory utilization",
+      "type": "stat"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 108,
+      "title": "Fragile vs Resilient comparison",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Fragile API success rate — no retries, no fallbacks",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 85 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 6 },
+      "id": 40,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [ { "editorMode": "code", "expr": "100 * (sum(api_requests_total{stage=\"fragile\"}) - sum(api_errors_total{stage=\"fragile\"})) / sum(api_requests_total{stage=\"fragile\"})", "instant": true, "refId": "A" } ],
+      "title": "Fragile API — success rate",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Resilient API success rate — retries, circuit breaker, fallbacks active",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 85 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 6 },
+      "id": 41,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [ { "editorMode": "code", "expr": "100 * (sum(api_requests_total{stage=\"resilient\"}) - sum(api_errors_total{stage=\"resilient\"})) / sum(api_requests_total{stage=\"resilient\"})", "instant": true, "refId": "A" } ],
+      "title": "Resilient API — success rate",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Fragile p95 latency — no timeout protection",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 6 },
+      "id": 42,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [ { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(fragile_latency_seconds_bucket[5m])))", "instant": true, "refId": "A" } ],
+      "title": "Fragile API — p95 latency",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Resilient p95 latency — circuit breaker cuts slow paths",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 6 },
+      "id": 43,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [ { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(resilient_latency_seconds_bucket[5m])))", "instant": true, "refId": "A" } ],
+      "title": "Resilient API — p95 latency",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "When stressors fire, fragile error rate spikes immediately. Resilient and Baseline absorb them through retries and fallbacks.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false },
+          "unit": "percent"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Fragile error %" },   "properties": [ { "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Resilient error %" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Baseline error %" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 10 },
+      "id": 44,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [
+        { "editorMode": "code", "expr": "100 * sum(rate(api_errors_total{stage=\"fragile\"}[2m]))   / sum(rate(api_requests_total{stage=\"fragile\"}[2m]))",   "legendFormat": "Fragile error %",   "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "100 * sum(rate(api_errors_total{stage=\"resilient\"}[2m])) / sum(rate(api_requests_total{stage=\"resilient\"}[2m]))", "legendFormat": "Resilient error %", "range": true, "refId": "B" },
+        { "editorMode": "code", "expr": "100 * sum(rate(api_errors_total{stage=\"baseline\"}[2m]))  / sum(rate(api_requests_total{stage=\"baseline\"}[2m]))",  "legendFormat": "Baseline error %",  "range": true, "refId": "C" }
+      ],
+      "title": "Error rate — Fragile (red) vs Resilient (green) vs Baseline (orange)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Fragile latency spikes higher and stays high. Resilient recovers faster.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false },
+          "unit": "s"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Fragile p95" },   "properties": [ { "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Resilient p95" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Baseline p95" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 10 },
+      "id": 45,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(fragile_latency_seconds_bucket[2m])))",    "legendFormat": "Fragile p95",   "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(resilient_latency_seconds_bucket[2m])))",  "legendFormat": "Resilient p95", "range": true, "refId": "B" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(baseline_latency_seconds_bucket[2m])))",   "legendFormat": "Baseline p95",  "range": true, "refId": "C" }
+      ],
+      "title": "p95 latency — Fragile (red) vs Resilient (green) vs Baseline (orange)",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Resilient maintains higher throughput under stress vs Fragile and Baseline. All three use the same api_requests_total metric so results are directly comparable.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false },
+          "unit": "reqps"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Fragile req/s" },   "properties": [ { "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Resilient req/s" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Baseline req/s" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 19 },
+      "id": 46,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [
+        { "editorMode": "code", "expr": "sum(rate(api_requests_total{stage=\"fragile\"}[2m]))",   "legendFormat": "Fragile req/s",   "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "sum(rate(api_requests_total{stage=\"resilient\"}[2m]))", "legendFormat": "Resilient req/s", "range": true, "refId": "B" },
+        { "editorMode": "code", "expr": "sum(rate(api_requests_total{stage=\"baseline\"}[2m]))",  "legendFormat": "Baseline req/s",  "range": true, "refId": "C" }
+      ],
+      "title": "Throughput — Fragile (red) vs Resilient (green) vs Baseline (orange)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Breakdown of what caused fragile API failures",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 19 },
+      "id": 47,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "donut", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [ { "editorMode": "code", "expr": "sum by(reason)(fragile_errors_total)", "legendFormat": "{{reason}}", "instant": true, "refId": "A" } ],
+      "title": "Fragile API — failure breakdown",
+      "type": "piechart"
+    },
+
+    {
+      "title": "CPU share breakdown",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
+      "id": 401,
+      "options": {
+        "pieType": "donut",
+        "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        { "expr": "fragile_cpu_share",   "legendFormat": "Fragile CPU",   "refId": "A" },
+        { "expr": "resilient_cpu_share", "legendFormat": "Resilient CPU", "refId": "B" },
+        { "expr": "node_cpu_utilization - (fragile_cpu_share + resilient_cpu_share)", "legendFormat": "Others CPU", "refId": "C" }
+      ]
+    },
+    {
+      "title": "Memory share breakdown",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 50 },
+      "id": 402,
+      "options": {
+        "pieType": "donut",
+        "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        { "expr": "fragile_memory_share",   "legendFormat": "Fragile Memory",   "refId": "A" },
+        { "expr": "resilient_memory_share", "legendFormat": "Resilient Memory", "refId": "B" },
+        { "expr": "node_memory_utilization - (fragile_memory_share + resilient_memory_share)", "legendFormat": "Others Memory", "refId": "C" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Baseline API (retries + circuit breaker, no AI/RL) vs Resilient API (full AI stack)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false },
+          "unit": "percent"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Baseline error %" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Resilient error %" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 28 },
+      "id": 60,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [
+        { "editorMode": "code", "expr": "100 * sum(rate(api_errors_total{stage=\"baseline\"}[2m]))  / sum(rate(api_requests_total{stage=\"baseline\"}[2m]))",  "legendFormat": "Baseline error %",  "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "100 * sum(rate(api_errors_total{stage=\"resilient\"}[2m])) / sum(rate(api_requests_total{stage=\"resilient\"}[2m]))", "legendFormat": "Resilient error %", "range": true, "refId": "B" }
+      ],
+      "title": "Error rate — Baseline (orange) vs Resilient (green)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Baseline p95 latency vs Resilient p95 — shows AI agent reducing tail latency",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false },
+          "unit": "s"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Baseline p95" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Resilient p95" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 28 },
+      "id": 61,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(baseline_latency_seconds_bucket[2m])))",  "legendFormat": "Baseline p95",  "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(resilient_latency_seconds_bucket[2m])))", "legendFormat": "Resilient p95", "range": true, "refId": "B" }
+      ],
+      "title": "p95 latency — Baseline (orange) vs Resilient (green)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Three-way success rate comparison — shows where AI adds value",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 85 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 37 },
+      "id": 62,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [ { "editorMode": "code", "expr": "100 * (sum(api_requests_total{stage=\"baseline\"}) - sum(api_errors_total{stage=\"baseline\"})) / sum(api_requests_total{stage=\"baseline\"})", "instant": true, "refId": "A" } ],
+      "title": "Baseline API — success rate (no AI)",
+      "type": "stat"
+    },
+
+    
+
+    {
+      "title": "Chaos exposure ratio — Baseline (orange) vs Resilient (green)",
+      "description": "Ratio of bad stressors (timeout+latency+failure) drawn per API. Baseline is ~0.75, Resilient converges lower as RL learns to avoid bad arms.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 28 },
+      "id": 501,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "yellow", "value": 0.5 },
+            { "color": "red", "value": 0.7 }
+          ]}
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Baseline exposure" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" }}]},
+          { "matcher": { "id": "byName", "options": "Resilient exposure" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" }}]}
+        ]
+      },
+      "targets": [
+        { "expr": "baseline_bad_stressor_ratio",  "legendFormat": "Baseline exposure",  "range": true, "refId": "A" },
+        { "expr": "resilient_bad_stressor_ratio", "legendFormat": "Resilient exposure", "range": true, "refId": "B" }
+      ],
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+                   "tooltip": { "mode": "multi" }}
+    },
+    {
+      "title": "Retry exhaustion — Baseline vs Resilient",
+      "description": "How often all retry attempts fail. Baseline has no AI correction between retries so chains of bad stressors exhaust it far more often.",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 28 },
+      "id": 502,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Baseline exhausted" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" }}]},
+          { "matcher": { "id": "byName", "options": "Resilient degraded" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" }}]}
+        ]
+      },
+      "targets": [
+        { "expr": "rate(baseline_fallback_total{reason=\"retries_exhausted\"}[2m])",
+          "legendFormat": "Baseline exhausted", "range": true, "refId": "A" },
+        { "expr": "rate(resilient_fallback_total{reason=\"degraded_response\"}[2m])",
+          "legendFormat": "Resilient degraded",  "range": true, "refId": "B" }
+      ],
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+                   "tooltip": { "mode": "multi" }}
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "id": 101,
+      "title": "Stage comparison",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Success rate per API stage — fragile, baseline and resilient all visible",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 42 },
+      "id": 10,
+      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "horizontal", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "100 * (sum by(stage)(api_requests_total) - sum by(stage)(api_errors_total)) / sum by(stage)(api_requests_total)", "legendFormat": "{{stage}}", "range": true, "refId": "A" } ],
+      "title": "Success rate by stage (%)",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Request rate per stage over time — resilient, fragile and baseline all visible",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "reqps"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "fragile" },   "properties": [ { "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "resilient" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "baseline" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 42 },
+      "id": 26,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        { "editorMode": "code", "expr": "sum(rate(api_requests_total{stage=\"resilient\"}[5m]))", "legendFormat": "resilient", "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "sum(rate(api_requests_total{stage=\"fragile\"}[5m]))",   "legendFormat": "fragile",   "range": true, "refId": "B" },
+        { "editorMode": "code", "expr": "sum(rate(api_requests_total{stage=\"baseline\"}[5m]))",  "legendFormat": "baseline",  "range": true, "refId": "C" }
+      ],
+      "title": "Request rate by stage (resilient / fragile / baseline)",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "id": 102,
+      "title": "Resilience — retries & fallbacks",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Retry success as a share of all outcomes",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+      "id": 11,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "100 * sum(increase(resilient_retry_success_total[30m])) / (sum(increase(resilient_retry_success_total[30m])) + sum(increase(resilient_fallback_total[30m])))", "legendFormat": "Retry success %", "range": true, "refId": "A" } ],
+      "title": "Retry success rate (%)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Fallback/failure exhaustion rate as a percentage of all requests, shown for resilient and baseline. Fragile has no fallback mechanism so its failure rate is used as a proxy.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "percent"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Resilient fallback %" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Baseline fallback %" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Fragile failure %" },    "properties": [ { "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
+      "id": 12,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        { "editorMode": "code", "expr": "100 * sum(increase(resilient_fallback_total[30m]))    / sum(increase(api_requests_total{stage=\"resilient\"}[30m]))", "legendFormat": "Resilient fallback %", "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "100 * sum(increase(baseline_fallback_total[30m]))     / sum(increase(api_requests_total{stage=\"baseline\"}[30m]))",  "legendFormat": "Baseline fallback %",  "range": true, "refId": "B" },
+        { "editorMode": "code", "expr": "100 * sum(increase(api_errors_total{stage=\"fragile\"}[30m])) / sum(increase(api_requests_total{stage=\"fragile\"}[30m]))", "legendFormat": "Fragile failure %", "range": true, "refId": "C" }
+      ],
+      "title": "Fallback usage — Resilient (green) / Baseline (orange) / Fragile failure proxy (red)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Breakdown of fragile API error reasons",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 59 },
+      "id": 201,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "pieType": "donut",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "sum by(reason)(fragile_errors_total)",
+          "legendFormat": "{{reason}}",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Fragile API — failure reasons",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Breakdown of resilient API fallback reasons",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 59 },
+      "id": 202,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "pieType": "donut",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "sum by(reason)(resilient_fallback_total)",
+          "legendFormat": "{{reason}}",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Resilient API — fallback reasons",
+      "type": "piechart"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 67 },
+      "id": 103,
+      "title": "Chaos engineering",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Proportion of each stressor type over time",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 68 },
+      "id": 13,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "100 * sum by(type)(increase(resilient_stressor_type_total[30m])) / sum(increase(resilient_stressor_type_total[30m]))", "legendFormat": "{{type}}", "range": true, "refId": "A" } ],
+      "title": "Chaos stressor mix (% over 30m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Cumulative count of each stressor type",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 68 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "sort": "desc", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "sum by(type)(resilient_stressor_type_total)", "legendFormat": "{{type}}", "range": false, "instant": true, "refId": "A" } ],
+      "title": "Chaos stressor totals",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Chaos injections broken down by origin and stressor type",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 76 },
+      "id": 28,
+      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "auto", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "sum by(origin, stressor)(resilient_chaos_origin_total)", "legendFormat": "{{origin}} / {{stressor}}", "range": false, "instant": true, "refId": "A" } ],
+      "title": "Chaos origin breakdown",
+      "type": "barchart"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 84 },
+      "id": 104,
+      "title": "Latency",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "p50, p95, p99 latency for chaos-injected latency",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisPlacement": "left", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 85 },
+      "id": 8,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        { "editorMode": "code", "expr": "histogram_quantile(0.50, sum by(le)(rate(resilient_latency_seconds_bucket[5m])))", "legendFormat": "p50", "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(resilient_latency_seconds_bucket[5m])))", "legendFormat": "p95", "range": true, "refId": "B" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.99, sum by(le)(rate(resilient_latency_seconds_bucket[5m])))", "legendFormat": "p99", "range": true, "refId": "C" }
+      ],
+      "title": "Latency histogram (p50 / p95 / p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "p95 latency over time",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 85 },
+      "id": 9,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "histogram_quantile(0.95, sum(rate(resilient_latency_seconds_bucket[5m])) by(le))", "legendFormat": "p95 latency", "range": true, "refId": "A" } ],
+      "title": "Resilient API latency (p95)",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 93 },
+      "id": 105,
+      "title": "Bandit & RL agent",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Which strategy the RL agent is favouring",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 94 },
+      "id": 6,
+      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "auto", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "sum by(arm)(increase(bandit_arm_selected_total[1h]))", "legendFormat": "{{arm}}", "range": false, "instant": true, "refId": "A" } ],
+      "title": "Bandit arm selection (last 1h)",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "p50 and p95 bandit reward distribution",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 94 },
+      "id": 29,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        { "editorMode": "code", "expr": "histogram_quantile(0.50, sum by(le)(rate(bandit_reward_bucket[5m])))", "legendFormat": "reward p50", "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(bandit_reward_bucket[5m])))", "legendFormat": "reward p95", "range": true, "refId": "B" }
+      ],
+      "title": "Bandit reward distribution",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 102 },
+      "id": 106,
+      "title": "Retrieval & cache",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Staleness of retrieved data",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 103 },
+      "id": 5,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "retrieval_freshness_lag_seconds", "legendFormat": "Freshness lag (s)", "range": true, "refId": "A" } ],
+      "title": "Retrieval freshness lag",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Adaptive cache TTL",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 103 },
+      "id": 3,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "cache_ttl_seconds", "legendFormat": "Cache TTL (s)", "range": true, "refId": "A" } ],
+      "title": "Cache TTL",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 111 },
+      "id": 107,
+      "title": "LLM confidence",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Calibration error between predicted confidence and actual correctness — lower is better",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 80 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 112 },
+      "id": 4,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "llm_confidence_calibration_error", "legendFormat": "Confidence error", "range": true, "refId": "A" } ],
+      "title": "LLM confidence calibration error",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "LLM response accuracy (0-1 scale)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "max": 1, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "yellow", "value": 0.7 }, { "color": "green", "value": 0.95 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 112 },
+      "id": 30,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
+      "pluginVersion": "12.4.2",
+      "targets": [ { "editorMode": "code", "expr": "llm_response_accuracy", "legendFormat": "Accuracy", "range": true, "refId": "A" } ],
+      "title": "LLM response accuracy",
+      "type": "timeseries"
+    }
+
+  ],
+  "preload": false,
+  "schemaVersion": 42,
+  "tags": ["chaos", "resilience", "ai"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Resilient chaos dashboard",
+  "uid": "90fe71b8-caab-473d-b20b-e96c0b0ba1b9",
+  "version": 6,
+  "weekStart": ""
+}

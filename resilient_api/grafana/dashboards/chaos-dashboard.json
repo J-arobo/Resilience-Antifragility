@@ -1,0 +1,73 @@
+
+{
+    "dashboard": {
+      "id": null,
+      "title": "Chaos Engineering Continuous Learning",
+      "tags": ["chaos", "bandit", "uplift"],
+      "timezone": "browser",
+      "schemaVersion": 36,
+      "version": 1,
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Uplift Scores Over Time",
+          "targets": [
+            {
+              "expr": "uplift_score",
+              "legendFormat": "{{experiment}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Latency & Error Rate",
+          "targets": [
+            {
+              "expr": "http_request_latency_seconds",
+              "legendFormat": "Latency"
+            },
+            {
+              "expr": "http_request_errors_total",
+              "legendFormat": "Error Rate"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+        },
+        {
+          "type": "piechart",
+          "title": "Bandit Policy Weights",
+          "targets": [
+            {
+              "expr": "bandit_policy_weights",
+              "legendFormat": "{{arm}}"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "table",
+          "title": "Experiment Log",
+          "targets": [
+            {
+              "expr": "experiment_log_info",
+              "format": "table"
+            }
+          ],
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+        },
+        {
+          "type": "stat",
+          "title": "Latest Policy Version",
+          "targets": [
+            {
+              "expr": "policy_version_latest"
+            }
+          ],
+          "gridPos": { "x": 0, "y": 16, "w": 24, "h": 4 }
+        }
+      ]
+    },
+    "overwrite": true
+  }
+  
