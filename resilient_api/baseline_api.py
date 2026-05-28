@@ -33,10 +33,6 @@ except Exception:
         ["stage"]
     )
 
-
-BASELINE_REQUESTS = api_requests_total  # reuse the shared counter
-BASELINE_ERRORS   = api_errors_total    # reuse the shared counter
-BASELINE_REQUESTS       = Counter("baseline_requests_total",       "Total requests to baseline API",    ["stage"])
 BASELINE_ERRORS         = Counter("baseline_errors_total",         "Total errors from baseline API",    ["reason"])
 BASELINE_LATENCY        = Histogram("baseline_latency_seconds",    "Latency of baseline API responses")
 BASELINE_RETRIES        = Counter("baseline_retry_total",          "Total retry attempts by baseline API")

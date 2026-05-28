@@ -532,3 +532,22 @@ done
 
 
 Intergrating Reinforcement learning Algorithm
+
+
+
+
+When starting
+Create a swap file to give the system breathing room
+"""
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+"""
+
+Pruning to save space
+docker system prune -a --volumes -f
+
+Retraining
+Since prunning removed volumes, the saves resilience_agent.zip is gone. and we need to retrain
+ docker compose run app python random_learning/train_rl.py

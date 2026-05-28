@@ -20,6 +20,8 @@ services:
     restart: always
     mem_limit: 512m
     cpus: 0.5
+    environment:
+      - PYTHONPATH=/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
       interval: 30s

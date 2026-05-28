@@ -3,8 +3,12 @@ tenacity==8.2.2
 python-json-logger
 prometheus_client
 scikit-learn
-pandas
+pandas>=1.5.0
 requests
 psutil
 matplotlib
-pandas>=1.5.0
+stable-baselines3
+gymnasium
+prometheus-flask-exporter
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.0+cpu
