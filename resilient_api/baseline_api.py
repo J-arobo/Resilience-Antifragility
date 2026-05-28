@@ -33,7 +33,6 @@ except Exception:
         ["stage"]
     )
 
-BASELINE_ERRORS         = Counter("baseline_errors_total",         "Total errors from baseline API",    ["reason"])
 BASELINE_LATENCY        = Histogram("baseline_latency_seconds",    "Latency of baseline API responses")
 BASELINE_RETRIES        = Counter("baseline_retry_total",          "Total retry attempts by baseline API")
 BASELINE_CIRCUIT_BREAKER = Gauge("baseline_circuit_breaker_open", "Circuit breaker state (1=open)")

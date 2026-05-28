@@ -232,7 +232,6 @@
       "title": "Resilient API — p95 latency",
       "type": "stat"
     },
-
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "description": "When stressors fire, fragile error rate spikes immediately. Resilient and Baseline absorb them through retries and fallbacks.",
@@ -285,10 +284,9 @@
       "title": "p95 latency — Fragile (red) vs Resilient (green) vs Baseline (orange)",
       "type": "timeseries"
     },
-
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "description": "Resilient maintains higher throughput under stress vs Fragile and Baseline. All three use the same api_requests_total metric so results are directly comparable.",
+      "description": "Resilient maintains higher throughput under stress vs Fragile and Baseline.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -332,40 +330,12 @@
     },
 
     {
-      "title": "CPU share breakdown",
-      "type": "piechart",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
-      "id": 401,
-      "options": {
-        "pieType": "donut",
-        "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
-        "tooltip": { "mode": "single", "sort": "none" },
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
-      },
-      "targets": [
-        { "expr": "fragile_cpu_share",   "legendFormat": "Fragile CPU",   "refId": "A" },
-        { "expr": "resilient_cpu_share", "legendFormat": "Resilient CPU", "refId": "B" },
-        { "expr": "node_cpu_utilization - (fragile_cpu_share + resilient_cpu_share)", "legendFormat": "Others CPU", "refId": "C" }
-      ]
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
+      "id": 109,
+      "title": "Baseline vs Resilient comparison",
+      "type": "row"
     },
-    {
-      "title": "Memory share breakdown",
-      "type": "piechart",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 50 },
-      "id": 402,
-      "options": {
-        "pieType": "donut",
-        "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
-        "tooltip": { "mode": "single", "sort": "none" },
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
-      },
-      "targets": [
-        { "expr": "fragile_memory_share",   "legendFormat": "Fragile Memory",   "refId": "A" },
-        { "expr": "resilient_memory_share", "legendFormat": "Resilient Memory", "refId": "B" },
-        { "expr": "node_memory_utilization - (fragile_memory_share + resilient_memory_share)", "legendFormat": "Others Memory", "refId": "C" }
-      ]
-    },
-
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "description": "Baseline API (retries + circuit breaker, no AI/RL) vs Resilient API (full AI stack)",
@@ -380,7 +350,7 @@
           { "matcher": { "id": "byName", "options": "Resilient error %" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] }
         ]
       },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 29 },
       "id": 60,
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
       "targets": [
@@ -404,7 +374,7 @@
           { "matcher": { "id": "byName", "options": "Resilient p95" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] }
         ]
       },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 29 },
       "id": 61,
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
       "targets": [
@@ -427,51 +397,41 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 37 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 38 },
       "id": 62,
       "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "targets": [ { "editorMode": "code", "expr": "100 * (sum(api_requests_total{stage=\"baseline\"}) - sum(api_errors_total{stage=\"baseline\"})) / sum(api_requests_total{stage=\"baseline\"})", "instant": true, "refId": "A" } ],
       "title": "Baseline API — success rate (no AI)",
       "type": "stat"
     },
-
-    
-
     {
       "title": "Chaos exposure ratio — Baseline (orange) vs Resilient (green)",
-      "description": "Ratio of bad stressors (timeout+latency+failure) drawn per API. Baseline is ~0.75, Resilient converges lower as RL learns to avoid bad arms.",
+      "description": "Ratio of bad stressors (timeout+latency+failure) drawn per API.",
       "type": "timeseries",
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 42 },
       "id": 501,
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit", "min": 0, "max": 1,
           "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green", "value": 0 },
-            { "color": "yellow", "value": 0.5 },
-            { "color": "red", "value": 0.7 }
-          ]}
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 0.7 } ] }
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Baseline exposure" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" }}]},
-          { "matcher": { "id": "byName", "options": "Resilient exposure" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" }}]}
+          { "matcher": { "id": "byName", "options": "Baseline exposure" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Resilient exposure" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] }
         ]
       },
       "targets": [
         { "expr": "baseline_bad_stressor_ratio",  "legendFormat": "Baseline exposure",  "range": true, "refId": "A" },
         { "expr": "resilient_bad_stressor_ratio", "legendFormat": "Resilient exposure", "range": true, "refId": "B" }
       ],
-      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-                   "tooltip": { "mode": "multi" }}
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } }
     },
     {
       "title": "Retry exhaustion — Baseline vs Resilient",
-      "description": "How often all retry attempts fail. Baseline has no AI correction between retries so chains of bad stressors exhaust it far more often.",
+      "description": "How often all retry attempts fail.",
       "type": "timeseries",
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 42 },
       "id": 502,
       "fieldConfig": {
         "defaults": {
@@ -479,32 +439,52 @@
           "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 }
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Baseline exhausted" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" }}]},
-          { "matcher": { "id": "byName", "options": "Resilient degraded" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" }}]}
+          { "matcher": { "id": "byName", "options": "Baseline exhausted" }, "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Resilient degraded" }, "properties": [ { "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } } ] }
         ]
       },
       "targets": [
-        { "expr": "rate(baseline_fallback_total{reason=\"retries_exhausted\"}[2m])",
-          "legendFormat": "Baseline exhausted", "range": true, "refId": "A" },
-        { "expr": "rate(resilient_fallback_total{reason=\"degraded_response\"}[2m])",
-          "legendFormat": "Resilient degraded",  "range": true, "refId": "B" }
+        { "expr": "rate(baseline_fallback_total{reason=\"retries_exhausted\"}[2m])", "legendFormat": "Baseline exhausted", "range": true, "refId": "A" },
+        { "expr": "rate(resilient_fallback_total{reason=\"degraded_response\"}[2m])", "legendFormat": "Resilient degraded",  "range": true, "refId": "B" }
       ],
-      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-                   "tooltip": { "mode": "multi" }}
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } }
+    },
+
+    {
+      "title": "CPU share breakdown",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+      "id": 401,
+      "options": { "pieType": "donut", "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" }, "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        { "expr": "fragile_cpu_share",   "legendFormat": "Fragile CPU",   "refId": "A" },
+        { "expr": "resilient_cpu_share", "legendFormat": "Resilient CPU", "refId": "B" },
+        { "expr": "node_cpu_utilization - (fragile_cpu_share + resilient_cpu_share)", "legendFormat": "Others CPU", "refId": "C" }
+      ]
+    },
+    {
+      "title": "Memory share breakdown",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
+      "id": 402,
+      "options": { "pieType": "donut", "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" }, "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        { "expr": "fragile_memory_share",   "legendFormat": "Fragile Memory",   "refId": "A" },
+        { "expr": "resilient_memory_share", "legendFormat": "Resilient Memory", "refId": "B" },
+        { "expr": "node_memory_utilization - (fragile_memory_share + resilient_memory_share)", "legendFormat": "Others Memory", "refId": "C" }
+      ]
     },
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 59 },
       "id": 101,
       "title": "Stage comparison",
       "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "description": "Success rate per API stage — fragile, baseline and resilient all visible",
+      "description": "Success rate per API stage",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -515,9 +495,9 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 42 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 60 },
       "id": 10,
-      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "horizontal", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "horizontal", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
       "targets": [ { "editorMode": "code", "expr": "100 * (sum by(stage)(api_requests_total) - sum by(stage)(api_errors_total)) / sum by(stage)(api_requests_total)", "legendFormat": "{{stage}}", "range": true, "refId": "A" } ],
       "title": "Success rate by stage (%)",
@@ -525,7 +505,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "description": "Request rate per stage over time — resilient, fragile and baseline all visible",
+      "description": "Request rate per stage over time",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -540,7 +520,7 @@
           { "matcher": { "id": "byName", "options": "baseline" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
         ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 42 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 60 },
       "id": 26,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -555,7 +535,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 68 },
       "id": 102,
       "title": "Resilience — retries & fallbacks",
       "type": "row"
@@ -573,7 +553,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 69 },
       "id": 11,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -583,7 +563,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "description": "Fallback/failure exhaustion rate as a percentage of all requests, shown for resilient and baseline. Fragile has no fallback mechanism so its failure rate is used as a proxy.",
+      "description": "Fallback/failure exhaustion rate as a percentage of all requests",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -598,7 +578,7 @@
           { "matcher": { "id": "byName", "options": "Fragile failure %" },    "properties": [ { "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } } ] }
         ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 69 },
       "id": 12,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -613,49 +593,27 @@
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "description": "Breakdown of fragile API error reasons",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 59 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 77 },
       "id": 201,
-      "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "pieType": "donut",
-        "tooltip": { "mode": "single", "sort": "none" }
-      },
-      "targets": [
-        {
-          "expr": "sum by(reason)(fragile_errors_total)",
-          "legendFormat": "{{reason}}",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "donut", "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [ { "expr": "sum by(reason)(fragile_errors_total)", "legendFormat": "{{reason}}", "instant": true, "refId": "A" } ],
       "title": "Fragile API — failure reasons",
       "type": "piechart"
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "description": "Breakdown of resilient API fallback reasons",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 59 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 77 },
       "id": 202,
-      "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "pieType": "donut",
-        "tooltip": { "mode": "single", "sort": "none" }
-      },
-      "targets": [
-        {
-          "expr": "sum by(reason)(resilient_fallback_total)",
-          "legendFormat": "{{reason}}",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "donut", "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [ { "expr": "sum by(reason)(resilient_fallback_total)", "legendFormat": "{{reason}}", "instant": true, "refId": "A" } ],
       "title": "Resilient API — fallback reasons",
       "type": "piechart"
     },
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 67 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 85 },
       "id": 103,
       "title": "Chaos engineering",
       "type": "row"
@@ -673,7 +631,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 68 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 86 },
       "id": 13,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -692,7 +650,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 68 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 86 },
       "id": 7,
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "sort": "desc", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -712,9 +670,9 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 76 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 94 },
       "id": 28,
-      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "auto", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "auto", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
       "targets": [ { "editorMode": "code", "expr": "sum by(origin, stressor)(resilient_chaos_origin_total)", "legendFormat": "{{origin}} / {{stressor}}", "range": false, "instant": true, "refId": "A" } ],
       "title": "Chaos origin breakdown",
@@ -723,7 +681,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 84 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 102 },
       "id": 104,
       "title": "Latency",
       "type": "row"
@@ -741,7 +699,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 85 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 103 },
       "id": 8,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -766,7 +724,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 85 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 103 },
       "id": 9,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -777,7 +735,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 93 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 111 },
       "id": 105,
       "title": "Bandit & RL agent",
       "type": "row"
@@ -794,9 +752,9 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 94 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 112 },
       "id": 6,
-      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "auto", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "auto", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
       "targets": [ { "editorMode": "code", "expr": "sum by(arm)(increase(bandit_arm_selected_total[1h]))", "legendFormat": "{{arm}}", "range": false, "instant": true, "refId": "A" } ],
       "title": "Bandit arm selection (last 1h)",
@@ -814,7 +772,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 94 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 112 },
       "id": 29,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -828,7 +786,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 102 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 120 },
       "id": 106,
       "title": "Retrieval & cache",
       "type": "row"
@@ -846,7 +804,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 103 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 121 },
       "id": 5,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -867,7 +825,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 103 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 121 },
       "id": 3,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -878,7 +836,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 111 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 129 },
       "id": 107,
       "title": "LLM confidence",
       "type": "row"
@@ -895,7 +853,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 112 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 130 },
       "id": 4,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
@@ -916,12 +874,161 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 112 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 130 },
       "id": 30,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
       "pluginVersion": "12.4.2",
       "targets": [ { "editorMode": "code", "expr": "llm_response_accuracy", "legendFormat": "Accuracy", "range": true, "refId": "A" } ],
       "title": "LLM response accuracy",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 138 },
+      "id": 600,
+      "title": "Adaptive API — function-specific chaos behaviour",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Success rate per function type.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100, "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 85 } ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 139 },
+      "id": 601,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto", "orientation": "auto" },
+      "targets": [ { "editorMode": "code", "expr": "100 * (sum by(function_type)(adaptive_requests_total) - sum by(function_type)(adaptive_errors_total)) / sum by(function_type)(adaptive_requests_total)", "legendFormat": "{{function_type}}", "instant": true, "refId": "A" } ],
+      "title": "Adaptive — success rate by function type",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "SLO breaches split by type and function.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "spanNulls": false },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 139 },
+      "id": 602,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [ { "editorMode": "code", "expr": "sum by(function_type, slo_type)(rate(adaptive_slo_breach_total[2m]))", "legendFormat": "{{function_type}} / {{slo_type}}", "range": true, "refId": "A" } ],
+      "title": "Adaptive — SLO breaches by function type",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "p95 latency per function type.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "spanNulls": false },
+          "unit": "s"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "data_processing p95" }, "properties": [ { "id": "color", "value": { "fixedColor": "blue",   "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "llm_inference p95" },   "properties": [ { "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "realtime_query p95" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 139 },
+      "id": 603,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(adaptive_latency_seconds_bucket{function_type=\"data_processing\"}[2m])))", "legendFormat": "data_processing p95", "range": true, "refId": "A" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(adaptive_latency_seconds_bucket{function_type=\"llm_inference\"}[2m])))",   "legendFormat": "llm_inference p95",   "range": true, "refId": "B" },
+        { "editorMode": "code", "expr": "histogram_quantile(0.95, sum by(le)(rate(adaptive_latency_seconds_bucket{function_type=\"realtime_query\"}[2m])))",  "legendFormat": "realtime_query p95",  "range": true, "refId": "C" }
+      ],
+      "title": "Adaptive — p95 latency by function type",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Chaos stressor weights per function type over time.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "spanNulls": false },
+          "unit": "percentunit", "min": 0, "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 144 },
+      "id": 604,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [ { "editorMode": "code", "expr": "adaptive_profile_weight", "legendFormat": "{{function_type}} / {{stressor}}", "range": true, "refId": "A" } ],
+      "title": "Adaptive — chaos profile weights per function type",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Which recovery strategy was used per function type.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 144 },
+      "id": 605,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "donut", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [ { "editorMode": "code", "expr": "sum by(function_type, strategy)(adaptive_recovery_total)", "legendFormat": "{{function_type}} / {{strategy}}", "instant": true, "refId": "A" } ],
+      "title": "Adaptive — recovery strategy usage by function type",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Stressor distribution per function type.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" } },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 153 },
+      "id": 606,
+      "options": { "barRadius": 0, "barWidth": 0.6, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "auto", "showValue": "auto", "stacking": "none", "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [ { "editorMode": "code", "expr": "sum by(function_type, stressor)(adaptive_stressor_total)", "legendFormat": "{{function_type}} / {{stressor}}", "instant": true, "refId": "A" } ],
+      "title": "Adaptive — stressor distribution per function type",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Rolling success rate per function type.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "spanNulls": false },
+          "unit": "percentunit", "min": 0, "max": 1
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "data_processing" }, "properties": [ { "id": "color", "value": { "fixedColor": "blue",   "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "llm_inference" },   "properties": [ { "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "realtime_query" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 153 },
+      "id": 607,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [ { "editorMode": "code", "expr": "adaptive_success_rate", "legendFormat": "{{function_type}}", "range": true, "refId": "A" } ],
+      "title": "Adaptive — rolling success rate per function type",
       "type": "timeseries"
     }
 
