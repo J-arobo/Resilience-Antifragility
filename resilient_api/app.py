@@ -26,7 +26,6 @@ from chaos import PolicyManager, BanditPolicy
 
 from naive import naive_bp
 from reactive import reactive_bp
-from baseline_api import baseline_bp
 from prometheus_client import Counter, make_wsgi_app
 from metrics import api_requests_total, api_errors_total
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
@@ -42,7 +41,18 @@ from requests.exceptions import ConnectionError
 # -----------------------------------------------------------------------
 # Load trained RL model
 # -----------------------------------------------------------------------
-model = PPO.load("resilience_agent")
+# model = PPO.load("resilience_agent")
+try:
+    model = PPO.load("resilience_agent")
+    print("RL model loaded successfully")
+except Exception as e:
+    print(f"WARNING: Could not load RL model ({e}), training a fresh one...")
+    from stable_baselines3 import PPO as _PPO
+    _env = gym.make("CartPole-v1")
+    model = _PPO("MlpPolicy", _env, verbose=0)
+    model.learn(total_timesteps=1000)
+    model.save("resilience_agent")
+    print("Fresh RL model trained and saved")
 
 arms = ["fallback_chain", "circuit_breaker", "hedged_request"]
 policy_manager = PolicyManager(arms)
@@ -408,7 +418,6 @@ logger.addHandler(logHandler)
 app = Flask(__name__)
 app.register_blueprint(naive_bp)
 app.register_blueprint(reactive_bp)
-app.register_blueprint(baseline_bp)
 prometheus_metrics = PrometheusMetrics(app)
 
 
