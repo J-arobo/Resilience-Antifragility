@@ -551,3 +551,346 @@ docker system prune -a --volumes -f
 Retraining
 Since prunning removed volumes, the saves resilience_agent.zip is gone. and we need to retrain
  docker compose run app python random_learning/train_rl.py
+
+
+ 
+
+ Inserting Chaos 
+ Network Chaos
+ "
+ # Add 20% packet loss + 200ms delay with jitter
+curl -X POST http://localhost:5002/chaos/network \
+  -H "Content-Type: application/json" \
+  -d '{"loss": 20, "delay_ms": 200, "jitter_ms": 50}'
+
+# Heavy packet loss only
+curl -X POST http://localhost:5002/chaos/network \
+  -H "Content-Type: application/json" \
+  -d '{"loss": 50}'
+
+# Add duplicate packets (tests idempotency)
+curl -X POST http://localhost:5002/chaos/network \
+  -H "Content-Type: application/json" \
+  -d '{"duplicate": 30, "delay_ms": 100}'
+ "
+
+
+
+ CPU Stress
+ "
+ # Burn 1 CPU core for 30 seconds
+curl -X POST http://localhost:5002/chaos/cpu \
+  -H "Content-Type: application/json" \
+  -d '{"cores": 1, "seconds": 30}'
+
+# Burn all cores for 60 seconds (aggressive)
+curl -X POST http://localhost:5002/chaos/cpu \
+  -H "Content-Type: application/json" \
+  -d '{"cores": 4, "seconds": 60}'
+ "
+
+Memory pressure
+"
+# Allocate 64MB for 60 seconds
+curl -X POST http://localhost:5002/chaos/memory \
+  -H "Content-Type: application/json" \
+  -d '{"mb": 64, "seconds": 60}'
+
+# Max allowed (80MB) for 120 seconds
+curl -X POST http://localhost:5002/chaos/memory \
+  -H "Content-Type: application/json" \
+  -d '{"mb": 80, "seconds": 120}'
+"
+
+Disk I/O stress
+"
+# Write and read 256MB to stress disk
+curl -X POST http://localhost:5002/chaos/disk \
+  -H "Content-Type: application/json" \
+  -d '{"mb": 256}'
+
+# Heavier — 512MB
+curl -X POST http://localhost:5002/chaos/disk \
+  -H "Content-Type: application/json" \
+  -d '{"mb": 512}'
+"
+
+Time Skew (clock drift)
+"
+# Skew clock forward by 5 seconds
+curl -X POST http://localhost:5002/chaos/time \
+  -H "Content-Type: application/json" \
+  -d '{"skew_ms": 5000}'
+
+# Negative skew (clock goes backward)
+curl -X POST http://localhost:5002/chaos/time \
+  -H "Content-Type: application/json" \
+  -d '{"skew_ms": -3000}'
+"
+
+Reset Everything
+"
+curl -X POST http://localhost:5002/chaos/reset
+"
+
+
+Test Sequenxe to show the resilience API outperformoing baseline/fragile
+# 1. Start Locust load (already running)
+
+# 2. Inject CPU stress — watch Grafana error rates diverge
+curl -X POST http://localhost:5002/chaos/cpu \
+  -H "Content-Type: application/json" \
+  -d '{"cores": 2, "seconds": 45}'
+
+# 3. While CPU is stressed, add network latency too (combined chaos)
+curl -X POST http://localhost:5002/chaos/network \
+  -H "Content-Type: application/json" \
+  -d '{"delay_ms": 300, "loss": 15}'
+
+# 4. Watch Grafana for ~60 seconds — resilient should stay green
+#    while fragile spikes red
+
+# 5. Reset and observe recovery speed
+curl -X POST http://localhost:5002/chaos/reset
+
+# 6. Memory leak test
+curl -X POST http://localhost:5002/chaos/memory \
+  -H "Content-Type: application/json" \
+  -d '{"mb": 80, "seconds": 90}'
+
+
+
+
+  Hammering all the endpoints simulating
+  This runs 5 rounds in sequence - basline - baseline load, CPU stress, netowkr chaos, memory pressure,
+  then all 3 combined. fragile spikes red immediately, baseline climbs orange, and resilient stays the 
+  lowest error rate throughout.
+  '
+  cat > ~/chaos_blast.sh << 'EOF'
+#!/bin/bash
+
+RESILIENT="http://localhost:5002"
+FRAGILE="http://localhost:5003"
+BASELINE="http://localhost:5004"
+ADAPTIVE="http://localhost:5005"
+
+VALUES=(10 0 -5 1.5 7777777 100 -100 0.001 999)
+FUNCTION_TYPES=("data_processing" "llm_inference" "realtime_query")
+
+echo "======================================"
+echo " CHAOS BLAST — hitting all endpoints"
+echo "======================================"
+
+send_requests() {
+    local label=$1
+    local url=$2
+    local payload=$3
+    local count=$4
+
+    success=0
+    fail=0
+    for i in $(seq 1 $count); do
+        code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$url" \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            --max-time 5)
+        if [[ "$code" == "200" ]]; then
+            ((success++))
+        else
+            ((fail++))
+        fi
+    done
+    echo "[$label] sent=$count success=$success fail=$fail"
+}
+
+# -----------------------------------------------
+# Round 1 — baseline load, no chaos
+# -----------------------------------------------
+echo ""
+echo "--- Round 1: Baseline load (no chaos) ---"
+
+for val in "${VALUES[@]}"; do
+    payload="{\"value\": $val}"
+
+    curl -s -o /dev/null -X POST "$RESILIENT/resilient-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$FRAGILE/fragile-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$BASELINE/baseline-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+
+    for ft in "${FUNCTION_TYPES[@]}"; do
+        curl -s -o /dev/null -X POST "$ADAPTIVE/adaptive-api/process" \
+            -H "Content-Type: application/json" \
+            -d "{\"value\": $val, \"function_type\": \"$ft\"}" &
+    done
+done
+wait
+echo "Round 1 done."
+
+# -----------------------------------------------
+# Round 2 — inject CPU chaos, keep sending
+# -----------------------------------------------
+echo ""
+echo "--- Round 2: CPU chaos (2 cores, 45s) ---"
+curl -s -X POST "$RESILIENT/chaos/cpu" \
+    -H "Content-Type: application/json" \
+    -d '{"cores": 2, "seconds": 45}' &
+
+for i in $(seq 1 20); do
+    val=${VALUES[$((RANDOM % ${#VALUES[@]}))]}
+    payload="{\"value\": $val}"
+    curl -s -o /dev/null -X POST "$RESILIENT/resilient-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$FRAGILE/fragile-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$BASELINE/baseline-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    sleep 0.3
+done
+wait
+echo "Round 2 done."
+
+# -----------------------------------------------
+# Round 3 — network chaos + requests
+# -----------------------------------------------
+echo ""
+echo "--- Round 3: Network chaos (loss=20%, delay=200ms) ---"
+curl -s -X POST "$RESILIENT/chaos/network" \
+    -H "Content-Type: application/json" \
+    -d '{"loss": 20, "delay_ms": 200, "jitter_ms": 50}'
+
+for i in $(seq 1 20); do
+    val=${VALUES[$((RANDOM % ${#VALUES[@]}))]}
+    payload="{\"value\": $val}"
+    curl -s -o /dev/null -X POST "$RESILIENT/resilient-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$FRAGILE/fragile-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$BASELINE/baseline-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    ft=${FUNCTION_TYPES[$((RANDOM % 3))]}
+    curl -s -o /dev/null -X POST "$ADAPTIVE/adaptive-api/process" \
+        -H "Content-Type: application/json" \
+        -d "{\"value\": $val, \"function_type\": \"$ft\"}" &
+    sleep 0.2
+done
+wait
+echo "Round 3 done."
+
+# -----------------------------------------------
+# Round 4 — memory pressure
+# -----------------------------------------------
+echo ""
+echo "--- Round 4: Memory pressure (80MB, 60s) ---"
+curl -s -X POST "$RESILIENT/chaos/memory" \
+    -H "Content-Type: application/json" \
+    -d '{"mb": 80, "seconds": 60}'
+
+for i in $(seq 1 15); do
+    val=${VALUES[$((RANDOM % ${#VALUES[@]}))]}
+    payload="{\"value\": $val}"
+    curl -s -o /dev/null -X POST "$RESILIENT/resilient-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$FRAGILE/fragile-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$BASELINE/baseline-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    sleep 0.3
+done
+wait
+echo "Round 4 done."
+
+# -----------------------------------------------
+# Round 5 — combined CPU + network + memory
+# -----------------------------------------------
+echo ""
+echo "--- Round 5: COMBINED chaos (CPU + network + memory) ---"
+curl -s -X POST "$RESILIENT/chaos/cpu" \
+    -H "Content-Type: application/json" \
+    -d '{"cores": 2, "seconds": 60}' &
+curl -s -X POST "$RESILIENT/chaos/network" \
+    -H "Content-Type: application/json" \
+    -d '{"loss": 30, "delay_ms": 300, "jitter_ms": 100}'
+curl -s -X POST "$RESILIENT/chaos/memory" \
+    -H "Content-Type: application/json" \
+    -d '{"mb": 64, "seconds": 60}'
+
+echo "All chaos active — hammering all endpoints for 30s..."
+end=$((SECONDS + 30))
+while [ $SECONDS -lt $end ]; do
+    val=${VALUES[$((RANDOM % ${#VALUES[@]}))]}
+    payload="{\"value\": $val}"
+    curl -s -o /dev/null -X POST "$RESILIENT/resilient-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$FRAGILE/fragile-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    curl -s -o /dev/null -X POST "$BASELINE/baseline-api/process" \
+        -H "Content-Type: application/json" -d "$payload" &
+    ft=${FUNCTION_TYPES[$((RANDOM % 3))]}
+    curl -s -o /dev/null -X POST "$ADAPTIVE/adaptive-api/process" \
+        -H "Content-Type: application/json" \
+        -d "{\"value\": $val, \"function_type\": \"$ft\"}" &
+    sleep 0.15
+done
+wait
+echo "Round 5 done."
+
+# -----------------------------------------------
+# Reset all chaos
+# -----------------------------------------------
+echo ""
+echo "--- Resetting all chaos ---"
+curl -s -X POST "$RESILIENT/chaos/reset"
+echo ""
+echo "======================================"
+echo " BLAST COMPLETE — check Grafana"
+echo " http://localhost:3001"
+echo "======================================"
+EOF
+
+chmod +x ~/chaos_blast.sh
+bash ~/chaos_blast.sh
+  '
+
+
+
+
+
+
+
+
+
+Sending 15 requests to every endpoint and show;
+- ✓/✗ per request with the actual response (result, chosen arm, error reason)
+- Pass/fail count per API
+- A visual progress bar summary at the end showing success rate per API
+
+
+
+
+
+
+to run them late again:
+1. # Run the multi-value test script
+bash ~/test_all_endpoints.sh
+
+2. # Run the chaos blast script
+bash ~/chaos_blast.sh
+
+
+together - in 2 different terminals
+'
+# Terminal 1 — run the value test
+bash ~/test_all_endpoints.sh
+
+# Terminal 2 — while test is running, blast chaos
+bash ~/chaos_blast.sh
+'
+
+
+Together in a single terminals
+'
+bash ~/test_all_endpoints.sh && bash ~/chaos_blast.sh
+'
+

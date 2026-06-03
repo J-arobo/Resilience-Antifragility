@@ -24,8 +24,8 @@ from typing import TypedDict
 import json
 from chaos import PolicyManager, BanditPolicy
 
-from naive import naive_bp
-from reactive import reactive_bp
+#from naive import naive_bp
+#from reactive import reactive_bp
 from prometheus_client import Counter, make_wsgi_app
 from metrics import api_requests_total, api_errors_total
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
@@ -36,6 +36,10 @@ from gymnasium import spaces
 import numpy as np
 from stable_baselines3 import PPO
 from requests.exceptions import ConnectionError
+
+import threading    # For thread-safe circuit breaker state management
+from collections import deque
+import time
 
 
 # -----------------------------------------------------------------------
@@ -121,7 +125,8 @@ BANDIT_ARM_SELECTED = Counter(
 )
 BANDIT_REWARD = Histogram("bandit_reward", "Reward assigned to each bandit arm")
 
-API_SLO_ADHERENCE   = Gauge("api_slo_adherence_ratio",        "Ratio of requests meeting SLOs")
+API_SLO_ADHERENCE   = Gauge("api_slo_adherence_ratio",    
+    "Ratio of requests meeting all SLOs in the rolling window", ["stage"])
 API_ERROR_RATE      = Gauge("api_error_total",                "Total API errors encountered", ["stage"])
 API_CIRCUIT_BREAKER = Gauge("api_circuit_breaker_open_total", "Circuit breaker activations")
 API_RETRY_SUCCESS   = Gauge("api_retry_success_total",        "Successful API retries")
@@ -136,6 +141,42 @@ SECURITY_ANOMALY_PRECISION = Gauge("security_anomaly_precision",         "Precis
 SECURITY_ANOMALY_RECALL    = Gauge("security_anomaly_recall",            "Recall of anomaly detection")
 SECURITY_POLICY_VIOLATIONS = Counter("security_policy_violations_total", "Policy violations detected")
 SECURITY_FLOW_ISOLATION    = Counter("security_flow_isolation_total",    "Flows isolated due to anomalies")
+
+# -----------------------------------------------------------------------
+# SLO thresholds — edit these to match my targets
+# -----------------------------------------------------------------------
+SLO_LATENCY_MS      = 1000   # p95 target: requests must complete under 1s
+SLO_ERROR_RATE      = 0.10   # no more than 10% errors in the rolling window
+SLO_WINDOW_SIZE     = 100    # rolling window: last N requests per stage
+ 
+
+# -----------------------------------------------------------------------
+# Per-stage rolling windows  { stage: deque of bools (True = met SLO) }
+# Each entry is True if that request met ALL SLOs, False otherwise.
+# -----------------------------------------------------------------------
+_slo_windows = {
+    "resilient":  deque(maxlen=SLO_WINDOW_SIZE),
+    "baseline":   deque(maxlen=SLO_WINDOW_SIZE),
+    "naive":      deque(maxlen=SLO_WINDOW_SIZE),
+    "reactive":   deque(maxlen=SLO_WINDOW_SIZE),
+    "fragile":    deque(maxlen=SLO_WINDOW_SIZE),
+    "antifragile": deque(maxlen=SLO_WINDOW_SIZE),
+}
+_slo_lock = threading.Lock()
+
+def record_slo(stage: str, latency_ms: float, success: bool):
+    met = success and (latency_ms < SLO_LATENCY_MS)
+ 
+    with _slo_lock:
+        window = _slo_windows.get(stage)
+        if window is None:
+            return
+        window.append(met)
+        adherence = sum(window) / len(window) if window else 0.0
+ 
+    # Update Prometheus — after releasing lock so we don't hold it during IO
+    API_SLO_ADHERENCE.labels(stage=stage).set(adherence)
+ 
 
 # -----------------------------------------------------------------------
 # Resilient chaos-exposure gauge (mirrors baseline_bad_stressor_ratio
@@ -175,6 +216,7 @@ class ModelResult(TypedDict):
 # -----------------------------------------------------------------------
 # Circuit breaker
 # -----------------------------------------------------------------------
+
 class CircuitState(Enum):
     CLOSED    = "closed"
     OPEN      = "open"
@@ -187,52 +229,58 @@ FAILURE_THRESHOLD           = 3
 HALF_OPEN_SUCCESS_THRESHOLD = 2
 COOLDOWN_SECONDS            = 10
 LAST_FAILURE_TIME           = 0
+CB_LOCK                     = threading.Lock()   
 
 
 def circuit_is_open() -> bool:
     global CIRCUIT_BREAKER_STATE, LAST_FAILURE_TIME
-    if CIRCUIT_BREAKER_STATE == CircuitState.OPEN:
-        if time.time() - LAST_FAILURE_TIME > COOLDOWN_SECONDS:
-            CIRCUIT_BREAKER_STATE = CircuitState.HALF_OPEN
-            return False
-        return True
-    return False
+    with CB_LOCK:                                 
+        if CIRCUIT_BREAKER_STATE == CircuitState.OPEN:
+            if time.time() - LAST_FAILURE_TIME > COOLDOWN_SECONDS:
+                CIRCUIT_BREAKER_STATE = CircuitState.HALF_OPEN
+                return False
+            return True
+        return False
 
 
 def record_failure(sys_metrics: dict):
     global FAILURE_COUNT, CIRCUIT_BREAKER_STATE, LAST_FAILURE_TIME, HALF_OPEN_SUCCESSES
-    if CIRCUIT_BREAKER_STATE == CircuitState.HALF_OPEN:
-        HALF_OPEN_SUCCESSES   = 0
-        CIRCUIT_BREAKER_STATE = CircuitState.OPEN
-        LAST_FAILURE_TIME     = time.time()
-        API_CIRCUIT_BREAKER.set(1)
-        return
-    FAILURE_COUNT    += 1
-    LAST_FAILURE_TIME = time.time()
-    if FAILURE_COUNT >= FAILURE_THRESHOLD:
-        CIRCUIT_BREAKER_STATE = CircuitState.OPEN
-        API_CIRCUIT_BREAKER.set(1)
-        log_chaos_event(
-            chaos_module="api", event_type="circuit_breaker_open", stressor="none",
-            adaptation_action="circuit_breaker", outcome="failure",
-            value=FAILURE_COUNT, sys_metrics=sys_metrics,
-            prediction=False, confidence=0.0, injected_by_ai=False
-        )
+    with CB_LOCK:                                  
+        if CIRCUIT_BREAKER_STATE == CircuitState.HALF_OPEN:
+            HALF_OPEN_SUCCESSES   = 0
+            CIRCUIT_BREAKER_STATE = CircuitState.OPEN
+            LAST_FAILURE_TIME     = time.time()
+            API_CIRCUIT_BREAKER.set(1)
+            return
+        FAILURE_COUNT    += 1
+        LAST_FAILURE_TIME = time.time()
+        if FAILURE_COUNT >= FAILURE_THRESHOLD:
+            CIRCUIT_BREAKER_STATE = CircuitState.OPEN
+            API_CIRCUIT_BREAKER.set(1)
+            log_chaos_event(
+                chaos_module="api", event_type="circuit_breaker_open", stressor="none",
+                adaptation_action="circuit_breaker", outcome="failure",
+                value=FAILURE_COUNT, sys_metrics=sys_metrics,
+                prediction=False, confidence=0.0, injected_by_ai=False
+            )
 
 
 def record_success():
     global FAILURE_COUNT, CIRCUIT_BREAKER_STATE, HALF_OPEN_SUCCESSES
-    if CIRCUIT_BREAKER_STATE == CircuitState.HALF_OPEN:
-        HALF_OPEN_SUCCESSES += 1
-        if HALF_OPEN_SUCCESSES >= HALF_OPEN_SUCCESS_THRESHOLD:
-            FAILURE_COUNT         = 0
-            HALF_OPEN_SUCCESSES   = 0
-            CIRCUIT_BREAKER_STATE = CircuitState.CLOSED
-            API_CIRCUIT_BREAKER.set(0)
-        return
-    FAILURE_COUNT         = 0
-    CIRCUIT_BREAKER_STATE = CircuitState.CLOSED
-    API_CIRCUIT_BREAKER.set(0)
+    with CB_LOCK:                                  
+        if CIRCUIT_BREAKER_STATE == CircuitState.HALF_OPEN:
+            HALF_OPEN_SUCCESSES += 1
+            if HALF_OPEN_SUCCESSES >= HALF_OPEN_SUCCESS_THRESHOLD:
+                FAILURE_COUNT         = 0
+                HALF_OPEN_SUCCESSES   = 0
+                CIRCUIT_BREAKER_STATE = CircuitState.CLOSED
+                API_CIRCUIT_BREAKER.set(0)
+            return
+        FAILURE_COUNT         = 0
+        CIRCUIT_BREAKER_STATE = CircuitState.CLOSED
+        API_CIRCUIT_BREAKER.set(0)
+
+
 
 
 # -----------------------------------------------------------------------
@@ -416,8 +464,8 @@ logger.addHandler(logHandler)
 # Flask app
 # -----------------------------------------------------------------------
 app = Flask(__name__)
-app.register_blueprint(naive_bp)
-app.register_blueprint(reactive_bp)
+#app.register_blueprint(naive_bp)
+#app.register_blueprint(reactive_bp)
 prometheus_metrics = PrometheusMetrics(app)
 
 
@@ -586,7 +634,7 @@ def execute_strategy(chosen_arm: str, value: float, sys_metrics: dict):
             # AI-weighted stressor selection — avoids bad stressors more often
             stressor = random.choices(
                 ["none", "timeout", "latency", "failure"],
-                weights=[0.6, 0.15, 0.15, 0.10]
+                weights=[0.55, 0.20, 0.15, 0.10]
             )[0]
             _track_resilient_stressor(stressor)   # update exposure gauge
             result = resilient_operation(value, stressor)
@@ -631,6 +679,7 @@ def record_resilient_metrics():
 # -----------------------------------------------------------------------
 @app.route('/resilient-api/process', methods=['POST'])
 def process_data():
+    start = time.time()
     api_requests_total.labels(stage="resilient").inc()
     RESILIENT_REQUESTS.inc()
 
@@ -641,6 +690,7 @@ def process_data():
     try:
         if value is None or not isinstance(value, (int, float)):
             api_errors_total.labels(stage="resilient").inc()
+            record_slo("resilient", (time.time() - start) * 1000, success=False)
             return jsonify({"error": "Invalid input: 'value' must be a number"}), 400
 
         total_fallbacks = sum(
@@ -685,47 +735,57 @@ def process_data():
             prediction=True, confidence=1.0, injected_by_ai=False
         )
 
+        record_slo("resilient", (time.time() - start) * 1000, success=True)
         return jsonify({"chosen_arm": chosen_arm, "result": result, "state": state}), 200
 
     except Exception as e:
         api_errors_total.labels(stage="resilient").inc()
         logger.exception("Unexpected error in resilient_operation")
+        record_slo("resilient", (time.time() - start) * 1000, success=False)
         return jsonify({"error": str(e), "outcome": "failure", "stressor": "unknown"}), 500
 
 
 @app.route('/naive-api/process', methods=['POST'])
 def naive_process():
+    start = time.time()
     api_requests_total.labels(stage="naive").inc()
     data  = request.get_json(force=True)
     value = data.get("value")
     try:
-        result = resilient_operation(value, random.choice(["timeout", "latency", "failure", "none"]))
+        result = resilient_operation(value, random.choices(["timeout", "latency", "failure", "none"], weights = [0.55, 0.20, 0.15, 0.10])[0])
+        record_slo("naive", (time.time() - start) * 1000, success=True)
         return jsonify({"stage": "naive", "result": result})
     except Exception as e:
         api_errors_total.labels(stage="naive").inc()
+        record_slo("naive", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "naive", "error": str(e)}), 500
 
 
 @app.route('/reactive-api/process', methods=['POST'])
 def reactive_process():
+    start = time.time()
     api_requests_total.labels(stage="reactive").inc()
     data  = request.get_json(force=True)
     value = data.get("value")
     try:
         for attempt in range(3):
             try:
-                result = resilient_operation(value, random.choice(["timeout", "latency", "failure", "none"]))
+                result = resilient_operation(value, random.choices(["timeout", "latency", "failure", "none"], weights = [0.55, 0.20, 0.15, 0.10])[0])
+                record_slo("reactive", (time.time() - start) * 1000, success=True)
                 return jsonify({"stage": "reactive", "result": result, "attempts": attempt + 1})
             except Exception:
                 continue
+        record_slo("reactive", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "reactive", "error": "All retries failed"}), 500
     except Exception as e:
         api_errors_total.labels(stage="reactive").inc()
+        record_slo("reactive", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "reactive", "error": str(e)}), 500
 
 
 @app.route('/antifragile-api/process', methods=['POST'])
 def antifragile_process():
+    start = time.time()
     api_requests_total.labels(stage="antifragile").inc()
     data        = request.get_json(force=True)
     value       = data.get("value")
@@ -738,11 +798,13 @@ def antifragile_process():
         resilient_operation(value, stressor)
         observed_uplift = random.uniform(-0.2, 0.3)
         arm, snapshot   = policy_manager.choose_and_update(observed_uplift)
+        record_slo("antifragile", (time.time() - start) * 1000, success=True)
         return jsonify({
             "stage": "antifragile", "chosen_arm": arm,
             "policy_snapshot": snapshot, "uplift": observed_uplift, "result": result
         })
     except Exception as e:
+        record_slo("antifragile", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "antifragile", "error": str(e)}), 500
 
 

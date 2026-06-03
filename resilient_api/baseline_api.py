@@ -9,8 +9,18 @@ from pythonjsonlogger import jsonlogger
 from enum import Enum
 import psutil
 from metrics import api_requests_total, api_errors_total
+import threading
+from collections import deque
+import time
 
 app = Flask(__name__)
+
+
+API_SLO_ADHERENCE = Gauge(
+    "api_slo_adherence_ratio",
+    "Ratio of requests meeting all SLOs in the rolling window",
+    ["stage"]
+)
 
 # -----------------------------------------------------------------------
 # Prometheus Metrics
@@ -40,6 +50,25 @@ BASELINE_CPU            = Gauge("baseline_cpu_percent",            "CPU usage of
 BASELINE_MEMORY         = Gauge("baseline_memory_percent",         "Memory usage of baseline API")
 BASELINE_REQUESTS = Counter("baseline_requests_total", "Baseline requests", ["stage"])
 BASELINE_ERRORS   = Counter("baseline_errors_total",   "Baseline errors",   ["stage"])
+
+
+# -----------------------------------------------------------------------
+# SLO thresholds — edit these to match your targets
+# -----------------------------------------------------------------------
+SLO_LATENCY_MS      = 1000   # p95 target: requests must complete under 1s
+SLO_ERROR_RATE      = 0.10   # no more than 10% errors in the rolling window
+SLO_WINDOW_SIZE     = 100    # rolling window: last N requests per stage
+ 
+# -----------------------------------------------------------------------
+# Per-stage rolling windows  { stage: deque of bools (True = met SLO) }
+# Each entry is True if that request met ALL SLOs, False otherwise.
+# -----------------------------------------------------------------------
+_slo_windows = {
+    "baseline":   deque(maxlen=SLO_WINDOW_SIZE)
+}
+_slo_lock = threading.Lock()
+
+
 
 # Fallback-equivalent counter so "Fallback usage" panel can include baseline
 BASELINE_FALLBACK = Counter(
@@ -104,9 +133,9 @@ def cb_record_failure():
 # Stressor injection — same probabilities as resilient API, no AI
 # -----------------------------------------------------------------------
 STRESSOR_WEIGHTS = {
-    "none":    0.65,  #65% of attempts succeeded
-    "latency": 0.15,  # latency fails but still succeed
-    "timeout": 0.10,  # hard failure
+    "none":    0.55,  #65% of attempts succeeded
+    "latency": 0.20,  # latency fails but still succeed
+    "timeout": 0.15,  # hard failure
     "failure": 0.10,  # hard failure
 }
 
@@ -193,12 +222,14 @@ def baseline_process():
         BASELINE_FALLBACK.labels(reason="circuit_breaker_open").inc()
         BASELINE_LATENCY.observe(time.time() - start)
         logger.warning("Baseline: circuit breaker open, rejecting request")
+        record_slo("baseline", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "baseline", "error": "Circuit breaker open"}), 503
 
     try:
         result, attempts = process_with_retry(value)
         BASELINE_LATENCY.observe(time.time() - start)
         logger.info("Baseline: success", extra={"result": result, "attempts": attempts})
+        record_slo("baseline", (time.time() - start) * 1000, success=True)
         return jsonify({
             "stage":           "baseline",
             "result":          result,
@@ -211,6 +242,7 @@ def baseline_process():
         api_errors_total.labels(stage="baseline").inc()
         BASELINE_FALLBACK.labels(reason="timeout_exhausted").inc()
         BASELINE_LATENCY.observe(time.time() - start)
+        record_slo("baseline", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "baseline", "error": str(e)}), 504
 
     except Exception as e:
@@ -218,6 +250,7 @@ def baseline_process():
         api_errors_total.labels(stage="baseline").inc()
         BASELINE_FALLBACK.labels(reason="failure_exhausted").inc()
         BASELINE_LATENCY.observe(time.time() - start)
+        record_slo("baseline", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "baseline", "error": str(e)}), 500
 
 

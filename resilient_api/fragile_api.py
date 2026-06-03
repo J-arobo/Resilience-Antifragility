@@ -7,8 +7,39 @@ import logging
 import threading
 from pythonjsonlogger import jsonlogger
 import psutil
+import threading
+from collections import deque
+import time
 
 app = Flask(__name__)
+
+API_SLO_ADHERENCE = Gauge(
+    "api_slo_adherence_ratio",
+    "Ratio of requests meeting all SLOs in the rolling window",
+    ["stage"]
+)
+
+
+# -----------------------------------------------------------------------
+# SLO thresholds — edit these to match your targets
+# -----------------------------------------------------------------------
+SLO_LATENCY_MS      = 1000   # p95 target: requests must complete under 1s
+SLO_ERROR_RATE      = 0.10   # no more than 10% errors in the rolling window
+SLO_WINDOW_SIZE     = 100    # rolling window: last N requests per stage
+ 
+# -----------------------------------------------------------------------
+# Per-stage rolling windows  { stage: deque of bools (True = met SLO) }
+# Each entry is True if that request met ALL SLOs, False otherwise.
+# -----------------------------------------------------------------------
+_slo_windows = {
+    "resilient":  deque(maxlen=SLO_WINDOW_SIZE),
+    "baseline":   deque(maxlen=SLO_WINDOW_SIZE),
+    "naive":      deque(maxlen=SLO_WINDOW_SIZE),
+    "reactive":   deque(maxlen=SLO_WINDOW_SIZE),
+    "fragile":    deque(maxlen=SLO_WINDOW_SIZE),
+    "antifragile": deque(maxlen=SLO_WINDOW_SIZE),
+}
+_slo_lock = threading.Lock()
 
 # -----------------------------------------------------------------------
 # CPU & Memory Share
@@ -101,6 +132,7 @@ def fragile_process():
         api_errors_total.labels(stage="fragile").inc()   # <-- feeds error-rate panel
         FRAGILE_LATENCY.observe(time.time() - start)
         logger.error("Fragile API: immediate failure", extra={"value": value, "mode": mode})
+        record_slo("fragile", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "fragile", "error": "Internal server error"}), 500
 
     elif mode == "slow_timeout":
@@ -110,6 +142,7 @@ def fragile_process():
         api_errors_total.labels(stage="fragile").inc()
         FRAGILE_LATENCY.observe(time.time() - start)
         logger.error("Fragile API: slow timeout", extra={"value": value, "delay": delay})
+        record_slo("fragile", (time.time() - start) * 1000, success=False)
         return jsonify({"stage": "fragile", "error": "Too slow"}), 504
 
     elif mode == "random_latency":
@@ -118,6 +151,7 @@ def fragile_process():
         result = value * 2
         FRAGILE_LATENCY.observe(time.time() - start)
         logger.info("Fragile API: slow success", extra={"value": value, "delay": delay})
+        record_slo("fragile", (time.time() - start) * 1000, success=True)
         return jsonify({"stage": "fragile", "result": result, "latency_injected": delay}), 200
 
     else:
@@ -126,6 +160,7 @@ def fragile_process():
         result = value * 2
         FRAGILE_LATENCY.observe(time.time() - start)
         logger.info("Fragile API: success", extra={"value": value})
+        record_slo("fragile", (time.time() - start) * 1000, success=True)
         return jsonify({"stage": "fragile", "result": result}), 200
 
 
