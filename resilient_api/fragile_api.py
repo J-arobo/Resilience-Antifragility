@@ -41,6 +41,16 @@ _slo_windows = {
 }
 _slo_lock = threading.Lock()
 
+def record_slo(stage: str, latency_ms: float, success: bool):
+    met = success and (latency_ms < SLO_LATENCY_MS)
+    with _slo_lock:
+        window = _slo_windows.get(stage)
+        if window is None:
+            return
+        window.append(met)
+        adherence = sum(window) / len(window) if window else 0.0
+    API_SLO_ADHERENCE.labels(stage=stage).set(adherence)
+
 # -----------------------------------------------------------------------
 # CPU & Memory Share
 # -----------------------------------------------------------------------

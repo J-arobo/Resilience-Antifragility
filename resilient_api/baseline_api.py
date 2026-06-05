@@ -68,7 +68,15 @@ _slo_windows = {
 }
 _slo_lock = threading.Lock()
 
-
+def record_slo(stage: str, latency_ms: float, success: bool):
+    met = success and (latency_ms < SLO_LATENCY_MS)
+    with _slo_lock:
+        window = _slo_windows.get(stage)
+        if window is None:
+            return
+        window.append(met)
+        adherence = sum(window) / len(window) if window else 0.0
+    API_SLO_ADHERENCE.labels(stage=stage).set(adherence)
 
 # Fallback-equivalent counter so "Fallback usage" panel can include baseline
 BASELINE_FALLBACK = Counter(
@@ -211,13 +219,13 @@ def baseline_process():
     value = data.get("value", 1.0)
 
     if value is None or not isinstance(value, (int, float)):
-        BASELINE_ERRORS.labels(reason="invalid_input").inc()
+        BASELINE_ERRORS.labels(stage="baseline").inc()
         api_errors_total.labels(stage="baseline").inc()
         BASELINE_LATENCY.observe(time.time() - start)
         return jsonify({"error": "Invalid input"}), 400
 
     if cb_is_open():
-        BASELINE_ERRORS.labels(reason="circuit_open").inc()
+        BASELINE_ERRORS.labels(stage="baseline").inc()
         api_errors_total.labels(stage="baseline").inc()
         BASELINE_FALLBACK.labels(reason="circuit_breaker_open").inc()
         BASELINE_LATENCY.observe(time.time() - start)
@@ -238,7 +246,7 @@ def baseline_process():
         }), 200
 
     except TimeoutError as e:
-        BASELINE_ERRORS.labels(reason="timeout").inc()
+        BASELINE_ERRORS.labels(stage="baseline").inc()
         api_errors_total.labels(stage="baseline").inc()
         BASELINE_FALLBACK.labels(reason="timeout_exhausted").inc()
         BASELINE_LATENCY.observe(time.time() - start)
@@ -246,7 +254,7 @@ def baseline_process():
         return jsonify({"stage": "baseline", "error": str(e)}), 504
 
     except Exception as e:
-        BASELINE_ERRORS.labels(reason="failure").inc()
+        BASELINE_ERRORS.labels(stage="baseline").inc()
         api_errors_total.labels(stage="baseline").inc()
         BASELINE_FALLBACK.labels(reason="failure_exhausted").inc()
         BASELINE_LATENCY.observe(time.time() - start)

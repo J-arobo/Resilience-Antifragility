@@ -644,7 +644,7 @@ def execute_strategy(chosen_arm: str, value: float, sys_metrics: dict):
         except Exception as e:
             record_failure(sys_metrics)
             FALLBACK_USED.labels(reason="circuit_breaker_failure").inc()
-            logger.exception(
+            logger.warning(
                 "Circuit breaker branch failed — degrading to fallback_chain",
                 extra={"error": str(e)}
             )
