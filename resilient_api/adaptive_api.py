@@ -32,9 +32,9 @@ import psutil
 from pythonjsonlogger import jsonlogger
 from enum import Enum
 
-from openai import OpenAI as _OpenAI
-import openai as _openai_sdk
-_openai_client = _OpenAI()  # reads OPENAI_API_KEY from env
+import os
+from groq import Groq as _Groq
+_openai_client = _Groq(api_key=os.environ.get("GROQ_API_KEY"))  # reads OPENAI_API_KEY from env
 
 # -----------------------------------------------------------------------
 # Shared metrics (feeds the same stage-comparison panels as the others)
@@ -103,6 +103,12 @@ ADAPTIVE_SUCCESS_RATE = Gauge(
     "adaptive_success_rate",
     "Rolling success rate per function type (last 100 requests)",
     ["function_type"]
+)
+ADAPTIVE_FAILURES_TO_ADAPT = Histogram(
+    "adaptive_failures_before_adaptation",
+    "Consecutive failures that triggered profile adaptation",
+    ["function_type"],
+    buckets=[1, 2, 3, 5, 10]
 )
 ADAPTIVE_CPU_SHARE = Gauge("adaptive_cpu_share", "Adaptive API CPU share")
 ADAPTIVE_MEMORY_SHARE = Gauge("adaptive_memory_share", "Adaptive API memory share")
@@ -194,10 +200,10 @@ FUNCTION_CONTEXTS = {
         "slo_latency_ms":   100,    # strict 100ms SLO — latency IS the failure
         "slo_must_succeed": True,
         "stressor_weights": {
-            "none":    0.2,        # heavily weighted to none — speed critical
-            "latency": 0.30,        # latency stressor almost always breaches SLO
-            "timeout": 0.35,
-            "failure": 0.15,
+            "none":    0.25,        # heavily weighted to none — speed critical
+            "latency": 0.45,        # latency is the story for realtime
+            "timeout": 0.20,
+            "failure": 0.10,
         },
         "recovery_order":   ["degrade"],  # no retries for realtime queries — just degrade if it fails  
         "tolerance":        1,      # zero tolerance — adapts immediately
@@ -253,6 +259,9 @@ def _adapt_profile(function_type: str, s: dict):
     ctx = FUNCTION_CONTEXTS[function_type]
 
     # Mark that adaptation has occurred (but don’t block future adaptations)
+    ADAPTIVE_FAILURES_TO_ADAPT.labels(
+        function_type=function_type
+    ).observe(s["consecutive_failures"]) 
     s["adapted"] = True
 
     if function_type == "data_processing":
@@ -348,7 +357,7 @@ def _execute_llm_inference(value: float, stressor: str) -> dict:
         start = time.time()
         try:
             resp = _openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama-3.1-8b-instant",
                 max_tokens=80,
                 messages=[{
                     "role": "user",
@@ -368,12 +377,8 @@ def _execute_llm_inference(value: float, stressor: str) -> dict:
                 "quality":           "high" if confidence > 0.85 else "acceptable",
                 "actual_latency_ms": round(elapsed, 2)
             }
-        except _openai_sdk.APITimeoutError:
-            raise TimeoutError("llm_inference: API timeout on clean call")
-        except _openai_sdk.RateLimitError:
-            raise RuntimeError("llm_inference: rate limited — treat as failure")
         except Exception as e:
-            raise RuntimeError(f"llm_inference: unexpected error — {e}")
+            raise TimeoutError(f"llm_inference: timeout — {e}")
 
     elif stressor == "latency":
         # Artificial pre-delay simulates slow network path to OpenAI API.
@@ -384,7 +389,7 @@ def _execute_llm_inference(value: float, stressor: str) -> dict:
         start = time.time()
         try:
             resp = _openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama-3.1-8b-instant",
                 max_tokens=80,
                 messages=[{
                     "role": "user",
@@ -406,10 +411,8 @@ def _execute_llm_inference(value: float, stressor: str) -> dict:
                 "actual_latency_ms": round(elapsed, 2),
                 "total_latency_ms":  round((pre_delay * 1000) + elapsed, 2)
             }
-        except _openai_sdk.APITimeoutError:
-            raise TimeoutError("llm_inference: API timeout on slow path")
         except Exception as e:
-            raise RuntimeError(f"llm_inference: slow path failed — {e}")
+            raise TimeoutError(f"llm_inference: timeout — {e}")
 
     elif stressor == "timeout":
         # Call attempted with a tight 500ms timeout — gpt-4o-mini typically
@@ -420,7 +423,7 @@ def _execute_llm_inference(value: float, stressor: str) -> dict:
         def _call():
             try:
                 resp = _openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="llama-3.1-8b-instant",
                     max_tokens=80,
                     timeout=0.5,   # 500ms hard deadline
                     messages=[{
@@ -510,24 +513,24 @@ def _recover(function_type: str, value: float, error: Exception, strategy: str) 
         return executor(value, "none")
 
     elif strategy == "fallback_model":
-    try:
-        resp = _openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            max_tokens=40,   # shorter = faster = cheaper fallback
-            messages=[{
-                "role": "user",
-                "content": f"Very briefly: what is {value} times pi?"
-            }]
-        )
-        confidence = 0.65   # lower — this is the degraded path
-        return {
-            "answer":     resp.choices[0].message.content,
-            "confidence": confidence,
-            "source":     "secondary_model",
-            "quality":    "degraded"
-        }
-    except Exception:
-        raise RuntimeError("Fallback model also failed")
+        try:
+            resp = _openai_client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                max_tokens=40,   # shorter = faster = cheaper fallback
+                messages=[{
+                    "role": "user",
+                    "content": f"Very briefly: what is {value} times pi?"
+                }]
+            )
+            confidence = 0.65   # lower — this is the degraded path
+            return {
+                "answer":     resp.choices[0].message.content,
+                "confidence": confidence,
+                "source":     "secondary_model",
+                "quality":    "degraded"
+            }
+        except Exception:
+            raise RuntimeError("Fallback model also failed")
 
     elif strategy == "cache":
         # Cache occasionally fails to return data
@@ -747,3 +750,4 @@ app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/metrics": make_wsgi_app()})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5005, debug=False, use_reloader=False)
+

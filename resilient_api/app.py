@@ -41,6 +41,8 @@ import threading    # For thread-safe circuit breaker state management
 from collections import deque
 import time
 
+from groq import Groq
+_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 # -----------------------------------------------------------------------
 # Load trained RL model
@@ -284,20 +286,20 @@ def record_success():
 
 
 # -----------------------------------------------------------------------
-# AI model layer - OpenAI
+# AI model layer - Groq
 # -----------------------------------------------------------------------
-from openai import OpenAI
-_client = OpenAI()  # reads OPENAI_API_KEY from environment
+#from groq import Groq
+#_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def call_primary_model(prompt: str) -> ModelResult:
     try:
         resp = _client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="llama-3.1-8b-instant",
             max_tokens=100,
             messages=[{"role": "user", "content": f"Process this value briefly: {prompt}"}]
         )
         answer     = resp.choices[0].message.content
-        confidence = 0.92 if resp.choices[0].finish_reason == "stop" else 0.65
+        confidence = 0.92
         LLM_RESPONSE_ACCURACY.set(confidence)
         LLM_CONFIDENCE_ERROR.set(abs(confidence - 0.85))
         LLM_ROUTING_SUCCESS.inc()
@@ -309,7 +311,7 @@ def call_primary_model(prompt: str) -> ModelResult:
 def call_secondary_model(prompt: str) -> ModelResult:
     try:
         resp = _client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="llama-3.1-8b-instant",
             max_tokens=50,
             messages=[{"role": "user", "content": f"Brief answer only: {prompt}"}]
         )
@@ -317,9 +319,7 @@ def call_secondary_model(prompt: str) -> ModelResult:
         return {"answer": answer, "success": True, "confidence": 0.70}
     except Exception as e:
         logger.warning("Secondary model failed", extra={"error": str(e)})
-        return {"answer": "", "success": False, "confidence": 0.0}
-
-        
+        return {"answer": "", "success": False, "confidence": 0.0}   
 
 # -----------------------------------------------------------------------
 # Bandit (UCB1)
@@ -571,7 +571,6 @@ def resilient_operation(value, stressor):
     if stressor == "timeout":
         injected_by_ai = True
         API_ERROR_RATE.labels(stage="resilient").inc()
-        #api_errors_total.labels(stage="resilient").inc()
         log_chaos_event(
             chaos_module="runtime", event_type="chaos_event", stressor="timeout",
             adaptation_action="none", outcome="failure", value=value,
@@ -1057,8 +1056,8 @@ Current system state:
 In 2-3 sentences, explain what is happening right now and what the system is doing to recover."""
 
     try:
-        resp     = _openai_client.chat.completions.create(
-            model="gpt-4o-mini",
+        resp     = _client.chat.completions.create (
+            model="llama-3.1-8b-instant",
             max_tokens=150,
             messages=[{"role": "user", "content": prompt}]
         )
