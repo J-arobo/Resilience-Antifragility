@@ -32,6 +32,10 @@ import psutil
 from pythonjsonlogger import jsonlogger
 from enum import Enum
 
+from openai import OpenAI as _OpenAI
+import openai as _openai_sdk
+_openai_client = _OpenAI()  # reads OPENAI_API_KEY from env
+
 # -----------------------------------------------------------------------
 # Shared metrics (feeds the same stage-comparison panels as the others)
 # -----------------------------------------------------------------------
@@ -328,42 +332,129 @@ def _execute_data_processing(value: float, stressor: str) -> dict:
         raise RuntimeError("data_processing: job failed — pipeline integrity at risk")
 
 
+# -----------------------------------------------------
+
 def _execute_llm_inference(value: float, stressor: str) -> dict:
     """
-    Simulates an LLM inference call.
-    High latency is expected and tolerated. Low confidence triggers fallback.
-    Recovery: try secondary model, then cached answer, then degrade.
+    Real LLM inference call using OpenAI gpt-4o-mini.
+
+    stressor="none"    → clean call, real latency, high confidence
+    stressor="latency" → artificial pre-delay + real call (slow gateway sim)
+    stressor="timeout" → tight deadline enforced, call almost always expires
+    stressor="failure" → call skipped entirely, raises immediately
     """
+
     if stressor == "none":
-        time.sleep(random.uniform(0.3, 0.8))   # LLMs are always a bit slow
-        confidence = random.uniform(0.82, 0.97)
-        return {
-            "answer":     f"LLM processed: {value}",
-            "confidence": confidence,
-            "source":     "primary_model",
-            "quality":    "high" if confidence > 0.9 else "acceptable"
-        }
+        start = time.time()
+        try:
+            resp = _openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                max_tokens=80,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        f"Compute {value} * pi and explain the result "
+                        f"in exactly one sentence."
+                    )
+                }]
+            )
+            elapsed    = (time.time() - start) * 1000
+            answer     = resp.choices[0].message.content
+            confidence = 0.92 if resp.choices[0].finish_reason == "stop" else 0.70
+            return {
+                "answer":            answer,
+                "confidence":        confidence,
+                "source":            "primary_model",
+                "quality":           "high" if confidence > 0.85 else "acceptable",
+                "actual_latency_ms": round(elapsed, 2)
+            }
+        except _openai_sdk.APITimeoutError:
+            raise TimeoutError("llm_inference: API timeout on clean call")
+        except _openai_sdk.RateLimitError:
+            raise RuntimeError("llm_inference: rate limited — treat as failure")
+        except Exception as e:
+            raise RuntimeError(f"llm_inference: unexpected error — {e}")
 
     elif stressor == "latency":
-        # Very slow inference — still valid but might miss SLO
-        delay = random.uniform(1.5, 4.5)
-        time.sleep(delay)
-        confidence = random.uniform(0.75, 0.92)
-        return {
-            "answer":     f"LLM processed (slow): {value}",
-            "confidence": confidence,
-            "source":     "primary_model",
-            "quality":    "slow_but_valid",
-            "latency_injected_ms": delay * 1000
-        }
+        # Artificial pre-delay simulates slow network path to OpenAI API.
+        # Call still completes — but total round-trip exceeds the 3000ms SLO.
+        pre_delay = random.uniform(1.5, 4.5)
+        time.sleep(pre_delay)
+
+        start = time.time()
+        try:
+            resp = _openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                max_tokens=80,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        f"Compute {value} * pi and explain the result "
+                        f"in exactly one sentence."
+                    )
+                }]
+            )
+            elapsed    = (time.time() - start) * 1000
+            answer     = resp.choices[0].message.content
+            confidence = 0.78   # lower — slow path implies degraded conditions
+            return {
+                "answer":            answer,
+                "confidence":        confidence,
+                "source":            "primary_model",
+                "quality":           "slow_but_valid",
+                "pre_delay_ms":      round(pre_delay * 1000, 2),
+                "actual_latency_ms": round(elapsed, 2),
+                "total_latency_ms":  round((pre_delay * 1000) + elapsed, 2)
+            }
+        except _openai_sdk.APITimeoutError:
+            raise TimeoutError("llm_inference: API timeout on slow path")
+        except Exception as e:
+            raise RuntimeError(f"llm_inference: slow path failed — {e}")
 
     elif stressor == "timeout":
-        # Model timed out — trigger fallback_model recovery
-        raise TimeoutError("llm_inference: primary model timeout — triggering fallback")
+        # Call attempted with a tight 500ms timeout — gpt-4o-mini typically
+        # takes 400-900ms so this expires most of the time, triggering recovery.
+        result_box = {}
+        error_box  = {}
+
+        def _call():
+            try:
+                resp = _openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    max_tokens=80,
+                    timeout=0.5,   # 500ms hard deadline
+                    messages=[{
+                        "role": "user",
+                        "content": f"Compute {value} * pi in one sentence."
+                    }]
+                )
+                result_box["answer"]      = resp.choices[0].message.content
+                result_box["finish"]      = resp.choices[0].finish_reason
+            except Exception as e:
+                error_box["error"] = str(e)
+
+        t = threading.Thread(target=_call)
+        t.start()
+        t.join(timeout=0.6)   # 600ms wall-clock deadline
+
+        if "answer" in result_box:
+            # Occasionally squeaks through — low confidence, unreliable path
+            return {
+                "answer":     result_box["answer"],
+                "confidence": 0.55,
+                "source":     "primary_model",
+                "quality":    "timeout_survived"
+            }
+        raise TimeoutError(
+            "llm_inference: primary model timeout — triggering fallback"
+        )
 
     elif stressor == "failure":
-        # Model crash — confidence is undefined
-        raise RuntimeError("llm_inference: model inference failed — confidence unknown")
+        # Hard failure — quota exhausted, key invalid, model unavailable.
+        raise RuntimeError(
+            "llm_inference: model inference failed — confidence unknown"
+        )
+
 
 
 def _execute_realtime_query(value: float, stressor: str) -> dict:
@@ -419,16 +510,24 @@ def _recover(function_type: str, value: float, error: Exception, strategy: str) 
         return executor(value, "none")
 
     elif strategy == "fallback_model":
-        # Fallback sometimes produces very low confidence
-        confidence = random.uniform(0.4, 0.7)
-        if confidence < 0.5:
-            raise RuntimeError("Fallback model produced unusable output")
+    try:
+        resp = _openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            max_tokens=40,   # shorter = faster = cheaper fallback
+            messages=[{
+                "role": "user",
+                "content": f"Very briefly: what is {value} times pi?"
+            }]
+        )
+        confidence = 0.65   # lower — this is the degraded path
         return {
-            "answer":     f"[FALLBACK MODEL] processed: {value}",
+            "answer":     resp.choices[0].message.content,
             "confidence": confidence,
             "source":     "secondary_model",
             "quality":    "degraded"
         }
+    except Exception:
+        raise RuntimeError("Fallback model also failed")
 
     elif strategy == "cache":
         # Cache occasionally fails to return data

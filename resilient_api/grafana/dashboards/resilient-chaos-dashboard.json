@@ -650,6 +650,7 @@
       "title": "Stage comparison",
       "type": "row"
     },
+
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "description": "Success rate per API stage — uses rate() so current performance is shown, not all-time averages which hide chaos events.",
@@ -667,10 +668,11 @@
       "id": 10,
       "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "horizontal", "showValue": "auto", "stacking": "none", "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" } },
       "pluginVersion": "12.4.2",
-      "targets": [ { "editorMode": "code", "expr": "100 * (sum by(stage)(rate(api_requests_total[5m])) - sum by(stage)(rate(api_errors_total[5m]))) / sum by(stage)(rate(api_requests_total[5m]))", "legendFormat": "{{stage}}", "range": true, "refId": "A" } ],
+      "targets": [ { "editorMode": "code", "expr": "100 * (sum by(stage)(rate(api_requests_total[5m])) - sum by(stage)(rate(api_errors_total[5m]))) / sum by(stage)(rate(api_requests_total[5m]))", "legendFormat": "{{stage}}", "instant": true, "range": false, "refId": "A" } ],
       "title": "Success rate by stage (%) — current 5m window",
       "type": "barchart"
     },
+
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "description": "Request rate per stage over time",
@@ -993,7 +995,7 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "spanNulls": false },
-          "unit": "percent"
+          "unit": "short"
         },
         "overrides": [
           { "matcher": { "id": "byName", "options": "realtime_query breach %" },  "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] },
@@ -1005,11 +1007,11 @@
       "id": 901,
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
       "targets": [
-        { "expr": "100 * sum(rate(adaptive_slo_breach_total{function_type=\"realtime_query\"}[2m]))  / sum(rate(adaptive_requests_total{function_type=\"realtime_query\"}[2m]))",  "legendFormat": "realtime_query breach %",  "range": true, "refId": "A" },
-        { "expr": "100 * sum(rate(adaptive_slo_breach_total{function_type=\"data_processing\"}[2m])) / sum(rate(adaptive_requests_total{function_type=\"data_processing\"}[2m]))", "legendFormat": "data_processing breach %", "range": true, "refId": "B" },
-        { "expr": "100 * sum(rate(adaptive_slo_breach_total{function_type=\"llm_inference\"}[2m]))   / sum(rate(adaptive_requests_total{function_type=\"llm_inference\"}[2m]))",   "legendFormat": "llm_inference breach %",   "range": true, "refId": "C" }
+        { "expr": "sum(rate(adaptive_slo_breach_total{function_type=\"realtime_query\"}[2m]))",  "legendFormat": "realtime_query breach %",  "range": true, "refId": "A" },
+        { "expr": "sum(rate(adaptive_slo_breach_total{function_type=\"data_processing\"}[2m]))", "legendFormat": "data_processing breach %", "range": true, "refId": "B" },
+        { "expr": "sum(rate(adaptive_slo_breach_total{function_type=\"llm_inference\"}[2m]))",   "legendFormat": "llm_inference breach %",   "range": true, "refId": "C" }
       ],
-      "title": "SLO breach rate % by function type — differentiation proof",
+      "title": "SLO breach rate (absolute) by function type — differentiation proof",
       "type": "timeseries"
     },
 
