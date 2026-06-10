@@ -894,3 +894,18 @@ Together in a single terminals
 bash ~/test_all_endpoints.sh && bash ~/chaos_blast.sh
 '
 
+Testing grok
+'
+curl -X POST http://localhost:5002/ai/answer \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "say hello"}'
+'
+
+
+curl -X POST http://localhost:5002/naive-api/process \
+  -H "Content-Type: application/json" \
+  -d '{"value": 10}'
+
+curl -X POST http://localhost:5002/reactive-api/process \
+  -H "Content-Type: application/json" \
+  -d '{"value": 10}'

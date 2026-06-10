@@ -173,6 +173,22 @@ class ResilientUser(HttpUser):
             json=random_payload(),
             name="Resilient API"
         )
+        
+    @task(2)
+    def post_naive(self):
+        self.client.post(
+            "/naive-api/process",
+            json=random_payload(),
+            name="Naive API"
+        )
+
+    @task(2)
+    def post_reactive(self):
+        self.client.post(
+            "/reactive-api/process",
+            json=random_payload(),
+            name="Reactive API"
+        )
 
     @task(2)
     def post_baseline(self):

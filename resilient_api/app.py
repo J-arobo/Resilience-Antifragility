@@ -422,7 +422,7 @@ def get_answer_with_fallback_chain(prompt: str, sys_metrics: dict) -> dict:
         FALLBACK_TOTAL.labels(reason="cache").inc()
         FALLBACK_USED.labels(reason="cache").inc()
         return {"answer": cached, "source": "cache",
-                "confidence": final_confidence, "used_fallback": True}
+                "confidence": 0.5, "used_fallback": True} #Stale cached response
 
     logger.warning("All AI fallbacks exhausted — returning degraded response")
     FALLBACK_USED.labels(reason="degraded_response").inc()
