@@ -1,2 +1,10 @@
-*.zip
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
 .env
+chaos_events*.csv
+csv_files/
+plots*/
+*.zip
+*.db

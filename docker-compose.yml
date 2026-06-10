@@ -3,9 +3,6 @@ networks:
     driver: bridge
 
 services:
-  # -----------------------------------------------------------------------
-  # Resilient API — RL + Bandit + fallback chain + circuit breaker
-  # -----------------------------------------------------------------------
   app:
     build:
       context: .
@@ -21,7 +18,7 @@ services:
     mem_limit: 512m
     cpus: 0.5
     environment:
-      - PYTHONPATH=/app
+      - PYTHONPATH=/app/apis:/app
       - GROQ_API_KEY=${GROQ_API_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
@@ -29,11 +26,8 @@ services:
       timeout: 10s
       retries: 3
     command: >
-      sh -c "tc qdisc add dev eth0 root netem loss 20% || true && python app.py"
+      sh -c "tc qdisc add dev eth0 root netem loss 20% || true && python apis/app.py"
 
-  # -----------------------------------------------------------------------
-  # Fragile API — no retries, no fallbacks, fixed failure probabilities
-  # -----------------------------------------------------------------------
   fragile-api:
     build:
       context: .
@@ -48,17 +42,16 @@ services:
     restart: always
     mem_limit: 256m
     cpus: 0.5
+    environment:
+      - PYTHONPATH=/app/apis:/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     command: >
-      sh -c "python fragile_api.py"
+      sh -c "python apis/fragile_api.py"
 
-  # -----------------------------------------------------------------------
-  # Baseline API — retries + circuit breaker, no AI/RL
-  # -----------------------------------------------------------------------
   baseline-api:
     build:
       context: .
@@ -73,18 +66,16 @@ services:
     restart: always
     mem_limit: 256m
     cpus: 0.5
+    environment:
+      - PYTHONPATH=/app/apis:/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     command: >
-      sh -c "python baseline_api.py"
+      sh -c "python apis/baseline_api.py"
 
-  # -----------------------------------------------------------------------
-  # Adaptive API — function-specific chaos profiles + context-aware recovery
-  # NEW: highlights function-level and context-aware chaos behaviour
-  # -----------------------------------------------------------------------
   adaptive-api:
     build:
       context: .
@@ -100,6 +91,7 @@ services:
     mem_limit: 256m
     cpus: 0.5
     environment:
+      - PYTHONPATH=/app/apis:/app
       - GROQ_API_KEY=${GROQ_API_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5005/health"]
@@ -107,11 +99,8 @@ services:
       timeout: 10s
       retries: 3
     command: >
-      sh -c "python adaptive_api.py"
+      sh -c "python apis/adaptive_api.py"
 
-  # -----------------------------------------------------------------------
-  # Locust — load tester for all four APIs
-  # -----------------------------------------------------------------------
   locust:
     build:
       context: .
@@ -128,45 +117,33 @@ services:
       - adaptive-api
     networks:
       - observability
+    command: locust -f /app/load_testing/locustfile.py --host=http://app:5002
 
-  # -----------------------------------------------------------------------
-  # Prometheus — scrapes all four APIs
-  # -----------------------------------------------------------------------
   prometheus:
     image: prom/prometheus
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - .:/app
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     networks:
       - observability
 
-  # -----------------------------------------------------------------------
-  # Grafana — dashboards
-  # -----------------------------------------------------------------------
   grafana:
     image: grafana/grafana
     ports:
       - "3001:3000"
     volumes:
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
-      - .:/app
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     networks:
       - observability
 
-  # -----------------------------------------------------------------------
-  # Loki + Promtail — log aggregation
-  # -----------------------------------------------------------------------
   loki:
     image: grafana/loki:latest
-    volumes:
-      - .:/app
     ports:
       - "3100:3100"
     networks:
@@ -175,7 +152,7 @@ services:
   promtail:
     image: grafana/promtail:latest
     volumes:
-      - ./promtail-config.yml:/etc/promtail/config.yml
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
       - /var/log:/var/log
     restart: always
     networks:

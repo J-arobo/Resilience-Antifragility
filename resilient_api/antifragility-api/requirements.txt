@@ -1,6 +1,0 @@
-flask==2.3.2
-tenacity==8.2.2
-#Adding Prometheus for exposing metrics
-#prometheus_client==0.20.0
-prometheus_client
-python-json-logger   
