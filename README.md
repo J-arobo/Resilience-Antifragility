@@ -31,7 +31,7 @@ Supporting services: Prometheus (9090), Grafana (3001), Loki (3100), Locust (809
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/<your-username>/Resilience-Antifragility.git
+git clone https://github.com/J-arobo/Resilience-Antifragility.git
 cd Resilience-Antifragility
 ```
 
