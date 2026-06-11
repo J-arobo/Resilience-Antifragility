@@ -148,6 +148,8 @@ Key parameters are set directly in the API files under `apis/`. The values used 
 ---
 
 ## Project Structure
+
+```
 ├── apis/                   # All four Flask API services + shared modules
 │   ├── app.py              # Resilient API
 │   ├── fragile_api.py
@@ -166,7 +168,7 @@ Key parameters are set directly in the API files under `apis/`. The values used 
 ├── dockerfile.locust.l
 ├── requirements.txt
 └── .env.example
-
+```
 ---
 
 ## Stopping the System
