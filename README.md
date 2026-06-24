@@ -1,29 +1,58 @@
 # Resilience-Antifragility Demonstration System
 
-A multi-stage API demonstration system exploring resilience and antifragility patterns in cloud microservices. Built as part of a postgraduate research project on **adaptive self-healing cloud applications**.
+A multi-stage API demonstration system exploring resilience and antifragility patterns in distributed cloud microservices. Built as part of postgraduate research on **adaptive self-healing cloud applications** at Keele University.
 
-The system runs four Flask APIs under identical chaos conditions, each representing a progressively more sophisticated resilience strategy. Metrics are collected via Prometheus and visualised in Grafana.
+Six Flask APIs run under identical chaos conditions, each representing a progressively more sophisticated resilience strategy — from naive failure through to RL-driven antifragile recovery. Metrics are collected via Prometheus and visualised in real time on Grafana.
 
 ---
 
-## System Architecture
+## Resilience Ladder
 
-| Service | Port | Strategy |
-|---|---|---|
-| Resilient API | 5002 | Circuit breaker + RL bandit + fallback chain |
-| Baseline API | 5004 | Retries + circuit breaker, no AI/RL |
-| Fragile API | 5003 | No retries, no fallbacks — fails under load |
-| Adaptive API | 5005 | Function-specific chaos profiles + context-aware recovery |
+| API | Port | Strategy | Expected failure rate under chaos |
+|---|---|---|---|
+| Naive API | 5002 | No retry, no fallback | ~79% |
+| Reactive API | 5002 | Basic retry only | ~22% |
+| Fragile API | 5003 | Random fail/slow/ok, no recovery | ~10% |
+| Baseline API | 5004 | Retry + circuit breaker, no AI | ~0% at low load |
+| Resilient API | 5002 | Circuit breaker + PPO RL + UCB1 bandit + fallback chain | 0% |
+| Adaptive API | 5005 | Function-specific chaos profiles + context-aware SLOs | 0% |
 
-Supporting services: Prometheus (9090), Grafana (3001), Loki (3100), Locust (8090).
+> Naive and Reactive are routes within the Resilient API container (port 5002).
+
+---
+
+## Architecture
+
+```
+Locust load generator
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│          API Layer (Docker Compose)      │
+│  Fragile(5003)  Baseline(5004)          │
+│  Resilient(5002) ──► Decision engine    │
+│    └── PPO RL + UCB1 bandit             │
+│    └── Circuit breaker + fallback chain │
+│    └── Groq LLM (llama-3.1-8b-instant) │
+│  Adaptive(5005) ──► Per-function SLOs   │
+└─────────────────────────────────────────┘
+        │
+        ▼
+Prometheus ──► Grafana dashboards
+Loki + Promtail (log aggregation)
+```
+
+**Chaos injection:** `/chaos/cpu`, `/chaos/memory`, `/chaos/network`, `/chaos/disk`, `/chaos/time`, `/chaos/reset` — all POST endpoints on port 5002.
+
+**LLM role:** Groq `llama-3.1-8b-instant` serves as (1) the protected workload in the fallback chain, (2) confidence-driven routing signal (threshold 0.80), and (3) the `/chaos/analyze` diagnostic endpoint.
 
 ---
 
 ## Prerequisites
 
 - Docker and Docker Compose
-- A [Groq](https://console.groq.com) API key (free tier is sufficient)
-- An AWS EC2 instance (t2.medium or larger recommended) or any Linux host with 2GB+ RAM
+- A [Groq API key](https://console.groq.com) — free tier is sufficient (30 RPM limit; run Locust at 3–5 users to stay within it)
+- AWS EC2 `t2.medium` or larger, or any Linux host with 2GB+ RAM
 
 ---
 
@@ -38,15 +67,15 @@ cd Resilience-Antifragility
 **2. Set your Groq API key**
 ```bash
 cp .env.example .env
-nano .env  # add your GROQ_API_KEY
+nano .env   # paste your GROQ_API_KEY value
 ```
 
-**3. Free up space**
+**3. (Optional) Free up Docker space on a fresh instance**
 ```bash
 docker system prune -a --volumes -f
 ```
 
-**4. (Recommended) Add a swap file if on a small instance**
+**4. (Recommended) Add swap if running on a small EC2 instance**
 ```bash
 sudo fallocate -l 1G /swapfile
 sudo chmod 600 /swapfile
@@ -54,22 +83,12 @@ sudo mkswap /swapfile
 sudo swapon /swapfile
 ```
 
-**5. Build**
+**5. Build and start**
 ```bash
-docker compose build
+docker compose up --build -d
 ```
 
-**6. Train the RL agent**
-```bash
-docker compose run app python training/train_rl.py
-```
-
-**7. Start the system**
-```bash
-docker compose up
-```
-
-All services should be running within ~30 seconds. Check with:
+All services should be running within ~60 seconds. Verify with:
 ```bash
 docker compose ps
 ```
@@ -78,29 +97,26 @@ docker compose ps
 
 ## Running Experiments
 
-### Option A — Locust UI (recommended)
-Open `http://<your-host>:8090`, set users and spawn rate, and point at `http://app:5002`.
+### Locust UI (recommended)
+Open `http://<host>:8090`, set **Number of users = 3**, **Ramp up = 1**, host = `http://app:5002`, then click Start.
 
-### Option B — Chaos blast script
-Fires structured chaos rounds (CPU, memory, network) across all APIs automatically:
-```bash
-bash scripts/chaos_blast.sh
-```
+> Keep users at 3–5 to stay within the Groq free-tier rate limit (30 requests/minute). The fallback chain will demonstrate graceful degradation to cache if the limit is hit.
 
-### Option C — Endpoint test
-Validates all API endpoints across a range of input values:
+### Chaos blast script
+Fires structured chaos rounds (CPU, memory, network) automatically:
 ```bash
-bash scripts/test_all_endpoints.sh
+bash ~/test_all_endpoints.sh   # validate all endpoints first
+bash ~/chaos_blast.sh          # 5-round chaos injection
 ```
 
 ### Manual chaos injection
 ```bash
-# CPU pressure
+# CPU pressure — 2 cores for 45 seconds
 curl -X POST http://localhost:5002/chaos/cpu \
   -H "Content-Type: application/json" \
   -d '{"cores": 2, "seconds": 45}'
 
-# Memory pressure
+# Memory pressure — 80MB for 60 seconds
 curl -X POST http://localhost:5002/chaos/memory \
   -H "Content-Type: application/json" \
   -d '{"mb": 80, "seconds": 60}'
@@ -109,12 +125,24 @@ curl -X POST http://localhost:5002/chaos/memory \
 curl -X POST http://localhost:5002/chaos/reset
 ```
 
-### Test Groq LLM endpoint
+### Verify Groq LLM is working
 ```bash
 curl -X POST http://localhost:5002/ai/answer \
   -H "Content-Type: application/json" \
   -d '{"prompt": "say hello"}'
 ```
+
+Expected response when working:
+```json
+{
+  "answer": "Hello! How can I assist you today?",
+  "source": "primary",
+  "confidence": 0.92,
+  "used_fallback": false
+}
+```
+
+If `source` is `"cache"` or `"degraded"`, check the Groq rate limit — lower Locust concurrency and retry.
 
 ---
 
@@ -126,22 +154,30 @@ curl -X POST http://localhost:5002/ai/answer \
 | Prometheus | http://localhost:9090 | — |
 | Locust | http://localhost:8090 | — |
 
-Grafana dashboards are provisioned automatically from `monitoring/grafana/dashboards/`.
+The Grafana dashboard (`Resilient chaos dashboard v2`) is provisioned automatically from `monitoring/grafana/dashboards/`. Set the time range to **Last 10 minutes** with **5s auto-refresh** during a live experiment.
+
+### Key panels to watch
+
+| Panel | What to look for |
+|---|---|
+| SLO adherence over time | Resilient drops but recovers; Baseline holds steady; Fragile collapses |
+| Error rate — Fragile / Resilient / Baseline | Resilient green line stays flat at 0% |
+| CPU pressure — chaos ramp | Spikes correlate with `/chaos/cpu` injection events |
+| Adaptive p95 latency by function type | Three distinct bands: realtime ~50ms, data_processing ~500ms, llm_inference ~2000ms |
 
 ---
 
-## Experiment Configuration
-
-Key parameters are set directly in the API files under `apis/`. The values used in experiments are:
+## Experiment Parameters
 
 | Parameter | Value |
 |---|---|
-| Stressor weights | none=0.40, latency=0.25, timeout=0.20, failure=0.15 |
-| Circuit breaker threshold | 5 consecutive failures |
-| Circuit breaker recovery timeout | 30s |
-| SLO target success rate | 95% |
-| SLO tracking window | 100 requests |
+| Stressor weights | none=0.55, latency=0.20, timeout=0.15, failure=0.10 |
+| Circuit breaker threshold | 3 consecutive failures |
+| Circuit breaker cooldown | 10s |
+| SLO latency target (Resilient) | 3000ms |
+| SLO tracking window | 100 requests (rolling) |
 | LLM model | llama-3.1-8b-instant (Groq) |
+| Confidence routing threshold | 0.80 |
 | Resilient API memory limit | 512MB |
 | Other APIs memory limit | 256MB each |
 
@@ -150,34 +186,53 @@ Key parameters are set directly in the API files under `apis/`. The values used 
 ## Project Structure
 
 ```
-├── apis/                   # All four Flask API services + shared modules
-│   ├── app.py              # Resilient API
-│   ├── fragile_api.py
-│   ├── baseline_api.py
-│   ├── adaptive_api.py
-│   ├── metrics.py          # Shared Prometheus metrics
-│   ├── learning.py         # RL training + chaos selector
-│   └── feature_extraction.py
-├── chaos/                  # Chaos module (bandit, policy manager, experiments)
-├── monitoring/             # Prometheus, Grafana, Promtail config
-├── load_testing/           # Locust load test file
-├── training/               # RL agent training script
-├── scripts/                # Test and chaos blast scripts
+├── apis/
+│   ├── app.py              # Resilient API (port 5002) — also serves Naive + Reactive routes
+│   ├── fragile_api.py      # Fragile API (port 5003)
+│   ├── baseline_api.py     # Baseline API (port 5004)
+│   ├── adaptive_api.py     # Adaptive API (port 5005)
+│   ├── metrics.py          # Shared Prometheus counters
+│   ├── chaos.py            # Bandit policy + chaos executor
+│   └── learning.py         # RL training + chaos selector classifier
+├── monitoring/
+│   ├── prometheus.yml
+│   ├── grafana/
+│   │   ├── dashboards/     # Auto-provisioned Grafana JSON
+│   │   ├── datasources/
+│   │   └── provisioning/
+│   └── promtail-config.yml
+├── load_testing/
+│   └── locustfile_chaos_ramp.py
+├── scripts/
+│   ├── chaos_blast.sh
+│   └── test_all_endpoints.sh
 ├── docker-compose.yml
 ├── dockerfile.app
 ├── dockerfile.locust.l
 ├── requirements.txt
 └── .env.example
 ```
+
 ---
 
-## Stopping the System
+## Stopping
 
 ```bash
-docker compose down
+docker compose down        # stop containers
+docker compose down -v     # stop and remove volumes
 ```
 
-To also remove volumes:
-```bash
-docker compose down -v
-```
+---
+
+## Research Context
+
+This system was developed as a practical artefact for postgraduate research into antifragility patterns in distributed systems. The core research question is whether RL-based adaptive strategies produce qualitatively different resilience signatures than classical patterns (retry, circuit breaker) under escalating chaos — demonstrated through the SLO adherence oscillation pattern visible in Grafana.
+
+**Key finding:** Resilient (RL-driven) shows deeper initial SLO drops than Baseline under chaos, but actively recovers to 90–95% between chaos events, while Baseline plateaus at 75–80% and cannot climb higher. Fragile collapses to ~15% and stays flat. This asymmetric oscillation is the antifragility signature.
+
+---
+
+## Author
+
+Joseph Arobo · MSc AI and Data Science · Keele University  
+GitHub: [J-arobo](https://github.com/J-arobo)
