@@ -139,6 +139,23 @@ INCIDENT_MTTR       = Gauge("incident_mttr_seconds",  "Mean time to recovery for
 CPU_UTILIZATION     = Gauge("node_cpu_utilization",   "CPU utilization percentage")
 MEMORY_UTILIZATION  = Gauge("node_memory_utilization","Memory utilization percentage")
 
+
+# -----------------------------------------------------------------------
+# Background system metrics updater — updates CPU/memory every second
+# -----------------------------------------------------------------------
+def _update_system_metrics():
+    while True:
+        try:
+            cpu = psutil.cpu_percent(interval=1)
+            mem = psutil.virtual_memory().percent
+            CPU_UTILIZATION.set(cpu)
+            MEMORY_UTILIZATION.set(mem)
+        except Exception:
+            pass
+
+threading.Thread(target=_update_system_metrics, daemon=True).start()
+
+
 SECURITY_ANOMALY_PRECISION = Gauge("security_anomaly_precision",         "Precision of anomaly detection")
 SECURITY_ANOMALY_RECALL    = Gauge("security_anomaly_recall",            "Recall of anomaly detection")
 SECURITY_POLICY_VIOLATIONS = Counter("security_policy_violations_total", "Policy violations detected")
@@ -618,8 +635,6 @@ def resilient_operation(value, stressor):
         )
         """
         sys_metrics = get_system_metrics()
-        CPU_UTILIZATION.set(sys_metrics["cpu_percent"])
-        MEMORY_UTILIZATION.set(sys_metrics["memory_percent"])
         time.sleep(0.2)
         result = value * 2
         RETRY_SUCCESS.inc()

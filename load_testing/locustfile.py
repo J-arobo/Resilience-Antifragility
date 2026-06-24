@@ -1,37 +1,10 @@
+#locustfile.py
 """
-locustfile.py
-========================
-Merged locust file: existing steady traffic + chaos ramp orchestrator.
-
-HOW TO RUN
-----------
-Option A — Locust web UI (recommended, you can watch it live):
-    locust -f locustfile_chaos_ramp.py
-    Then open http://localhost:8089
-    Set users=40, spawn rate=5, host=http://app:5002
-    Click Start — watch Grafana alongside it.
-
-Option B — headless, 5 min ramp test, HTML report:
-    locust -f locustfile_chaos_ramp.py \
-      --headless -u 40 -r 5 --run-time 300s \
-      --host http://app:5002 \
-      --html chaos_ramp_report.html
-
-WHAT HAPPENS (timeline)
------------------------
-  t=0s   — Normal + Burst traffic starts immediately
-  t=30s  — Light chaos: 1 CPU core for 20s, 32MB RAM for 30s
-  t=60s  — Moderate: 2 cores/30s, 48MB/40s
-  t=90s  — Sustained: 2 cores/45s, 64MB/60s
-  t=120s — Heavy: 3 cores/60s, 64MB/60s  <- Baseline starts cracking here
-  t=150s — Peak sustained: 3 cores/60s, 72MB/60s
-  t=180s — Spike: 4 cores/45s, 80MB/45s  <- Circuit breaker opens here
-  t=210s — Recovery ramp-down: 2 cores/30s, 48MB/30s
-  t=240s — Tail: 1 core/20s, 32MB/20s
-  t=300s — Test ends, /chaos/reset fires automatically
 
 WATCHING IT
 -----------
+Set locust to 3 and 1 respectively because of space.
+
   Locust UI  -> http://localhost:8089
   Grafana    -> http://localhost:3001
     - Set time range: Last 10 minutes, auto-refresh: 5s
@@ -43,7 +16,6 @@ DOCKER NETWORK NOTES
   FRAGILE_HOST = http://fragile-api:5003
   BASELINE_HOST= http://baseline-api:5004
   ADAPTIVE_HOST= http://adaptive-api:5005
-  Adjust these constants if your docker-compose service names differ.
 """
 
 import random
